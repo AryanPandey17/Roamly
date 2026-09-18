@@ -5,15 +5,102 @@ import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
 import { mockFlights, mockHotels, mockRecommendations } from "@/lib/mockData"
+import type { SavedPlaceCategory } from "@/lib/types/persistence"
 import { formatCurrency } from "@/lib/utils"
 
-export default function SavedPage() {
-  const { savedItems, toggleSaveItem, setActivePage } = useApp()
+type SavedEntry = {
+  id: string
+  externalId: string
+  category: SavedPlaceCategory
+  title: string
+  payload: Record<string, unknown>
+}
 
-  const flights = mockFlights.filter((f) => savedItems.flights.includes(f.id))
-  const hotels = mockHotels.filter((h) => savedItems.hotels.includes(h.id))
-  const recs = mockRecommendations.filter((r) => savedItems.recs.includes(r.id))
-  const total = flights.length + hotels.length + recs.length
+function text(payload: Record<string, unknown>, key: string) {
+  const value = payload[key]
+  return typeof value === "string" ? value : ""
+}
+
+function amount(payload: Record<string, unknown>, key: string) {
+  const value = payload[key]
+  return typeof value === "number" ? value : null
+}
+
+function details(item: SavedEntry) {
+  if (item.category === "flights") {
+    return [text(item.payload, "from"), text(item.payload, "to"), text(item.payload, "duration")]
+      .filter(Boolean)
+      .join(" → ") || "Flight details saved"
+  }
+  if (item.category === "hotels") {
+    const location = text(item.payload, "location")
+    const rating = amount(item.payload, "rating")
+    return [location, rating !== null ? `★ ${rating}` : ""].filter(Boolean).join(" · ") || "Accommodation saved"
+  }
+  return [text(item.payload, "category"), text(item.payload, "location")].filter(Boolean).join(" · ") || "Recommendation saved"
+}
+
+function price(item: SavedEntry) {
+  const currency = text(item.payload, "currency") || "INR"
+  if (item.category === "hotels") {
+    const perNight = amount(item.payload, "pricePerNight")
+    return perNight === null ? "" : `${formatCurrency(perNight, currency)}/night`
+  }
+  if (item.category === "flights") {
+    const value = amount(item.payload, "price")
+    return value === null ? "" : formatCurrency(value, currency)
+  }
+  return text(item.payload, "costLabel") || text(item.payload, "cost")
+}
+
+function demoEntries(): SavedEntry[] {
+  return [
+    ...mockFlights.map((flight) => ({
+        id: flight.id,
+        externalId: flight.id,
+        category: "flights" as const,
+        title: `${flight.airline} ${flight.flightNumber}`,
+        payload: { from: flight.from, to: flight.to, duration: flight.duration, price: flight.price },
+      })),
+    ...mockHotels.map((hotel) => ({
+        id: hotel.id,
+        externalId: hotel.id,
+        category: "hotels" as const,
+        title: hotel.name,
+        payload: { location: hotel.location, rating: hotel.rating, pricePerNight: hotel.pricePerNight },
+      })),
+    ...mockRecommendations.map((recommendation) => ({
+        id: recommendation.id,
+        externalId: recommendation.id,
+        category: "recs" as const,
+        title: recommendation.name,
+        payload: {
+          category: recommendation.category,
+          location: recommendation.location,
+          cost: recommendation.cost,
+        },
+      })),
+  ]
+}
+
+const sectionConfig = {
+  flights: { label: "Flights", icon: Plane },
+  hotels: { label: "Hotels", icon: Hotel },
+  recs: { label: "Recommendations", icon: Compass },
+} satisfies Record<SavedPlaceCategory, { label: string; icon: typeof Plane }>
+
+export default function SavedPage() {
+  const { savedItems, savedPlaces, supabaseEnabled, syncError, toggleSaveItem, setActivePage } = useApp()
+  const entries: SavedEntry[] = supabaseEnabled
+    ? savedPlaces.map((place) => ({
+        id: place.id,
+        externalId: place.external_id,
+        category: place.category,
+        title: place.title || `Saved ${place.category.slice(0, -1)}`,
+        payload: place.payload || {},
+      }))
+    : demoEntries().filter((entry) => savedItems[entry.category].includes(entry.externalId))
+  const total = entries.length
 
   return (
     <AppLayout maxWidth="max-w-5xl">
@@ -24,6 +111,8 @@ export default function SavedPage() {
         icon={Heart}
       />
 
+      {syncError && supabaseEnabled && <div className="demo-banner"><p>{syncError}</p></div>}
+
       {total === 0 ? (
         <div className="surface panel-pad" style={{ textAlign: "center" }}>
           <Heart style={{ width: "2.5rem", color: "#8892a4", margin: "0 auto .75rem" }} />
@@ -32,58 +121,34 @@ export default function SavedPage() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {flights.length > 0 && (
-            <section>
-              <p className="section-title"><Plane /> Flights</p>
-              <div className="surface">
-                {flights.map((f) => (
-                  <div className="list-row" key={f.id}>
-                    <div><h4>{f.airline} {f.flightNumber}</h4><p>{f.from} → {f.to} · {f.duration}</p></div>
-                    <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
-                      <strong>{formatCurrency(f.price)}</strong>
-                      <button className="secondary-button" style={{ padding: ".4rem" }} onClick={() => toggleSaveItem("flights", f.id)}><Trash2 style={{ width: ".85rem" }} /></button>
+          {(Object.keys(sectionConfig) as SavedPlaceCategory[]).map((category) => {
+            const sectionEntries = entries.filter((item) => item.category === category)
+            if (!sectionEntries.length) return null
+            const { label, icon: Icon } = sectionConfig[category]
+            return (
+              <section key={category}>
+                <p className="section-title"><Icon /> {label}</p>
+                <div className="surface">
+                  {sectionEntries.map((item) => (
+                    <div className="list-row" key={item.id}>
+                      <div><h4>{item.title}</h4><p>{details(item)}</p></div>
+                      <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
+                        {price(item) && <strong>{price(item)}</strong>}
+                        <button
+                          className="secondary-button"
+                          style={{ padding: ".4rem" }}
+                          onClick={() => void toggleSaveItem(category, item.externalId)}
+                          aria-label={`Remove ${item.title}`}
+                        >
+                          <Trash2 style={{ width: ".85rem" }} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {hotels.length > 0 && (
-            <section>
-              <p className="section-title"><Hotel /> Hotels</p>
-              <div className="surface">
-                {hotels.map((h) => (
-                  <div className="list-row" key={h.id}>
-                    <div><h4>{h.name}</h4><p>{h.location} · ★ {h.rating}</p></div>
-                    <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
-                      <strong>{formatCurrency(h.pricePerNight)}/night</strong>
-                      <button className="secondary-button" style={{ padding: ".4rem" }} onClick={() => toggleSaveItem("hotels", h.id)}><Trash2 style={{ width: ".85rem" }} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {recs.length > 0 && (
-            <section>
-              <p className="section-title"><Compass /> Recommendations</p>
-              <div className="surface">
-                {recs.map((r) => (
-                  <div className="list-row" key={r.id}>
-                    <div><h4>{r.name}</h4><p>{r.category} · {r.cost}</p></div>
-                    <button className="secondary-button" style={{ padding: ".4rem" }} onClick={() => toggleSaveItem("recs", r.id)}><Trash2 style={{ width: ".85rem" }} /></button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="surface panel-pad">
-            <p className="section-title">Collection: Japan Trip Ideas</p>
-            <p style={{ fontSize: ".82rem", color: "#687186" }}>{recs.length + hotels.length} saved items for your Tokyo adventure.</p>
-          </div>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
     </AppLayout>

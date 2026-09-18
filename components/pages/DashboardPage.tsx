@@ -40,9 +40,9 @@ export default function DashboardPage() {
         eyebrow="Overview"
         title={`Where do you want to travel next${user?.name ? `, ${user.name.split(" ")[0]}` : ""}?`}
         description={
-          providers.gemini
-            ? "Live Gemini agents are enabled. Plan a trip to watch the negotiation loop."
-            : "Add GEMINI_API_KEY for live agents. Demo Mode still runs the catalog simulation."
+            providers.mistral || providers.gemini
+            ? "Live AI agents are enabled. Plan a trip to watch the negotiation loop."
+            : "Add MISTRAL_API_KEY or GEMINI_API_KEY for live agents. Demo Mode still runs the catalog simulation."
         }
         action={
           <button className="primary-button" onClick={startDemo}>

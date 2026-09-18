@@ -2,6 +2,7 @@ import type { GraphEvent, PlanTripInput, TripRecord } from "@/lib/types/trip"
 
 export type ProviderStatus = {
   gemini: boolean
+  mistral: boolean
   supabase: boolean
   duffel: boolean
   expedia: boolean
@@ -56,8 +57,9 @@ export async function planTripStream(
 export async function apiGet<T>(path: string, token: string | null): Promise<T> {
   const res = await fetch(path, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    cache: "no-store",
   })
-  return res.json()
+  return readApiResponse<T>(res)
 }
 
 export async function apiSend<T>(path: string, token: string | null, method: string, body?: unknown): Promise<T> {
@@ -69,5 +71,14 @@ export async function apiSend<T>(path: string, token: string | null, method: str
     },
     body: body ? JSON.stringify(body) : undefined,
   })
-  return res.json()
+  return readApiResponse<T>(res)
+}
+
+async function readApiResponse<T>(res: Response): Promise<T> {
+  const body = (await res.json().catch(() => null)) as { error?: string } | T | null
+  if (!res.ok) {
+    const message = body && typeof body === "object" && "error" in body ? body.error : null
+    throw new Error(typeof message === "string" ? message : `Request failed (${res.status}).`)
+  }
+  return body as T
 }

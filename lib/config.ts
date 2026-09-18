@@ -9,6 +9,14 @@ export function isGeminiConfigured() {
   return Boolean(process.env.GEMINI_API_KEY)
 }
 
+export function isMistralConfigured() {
+  return Boolean(process.env.MISTRAL_API_KEY)
+}
+
+export function isLlmConfigured() {
+  return isMistralConfigured() || isGeminiConfigured()
+}
+
 export function isDuffelConfigured() {
   return Boolean(process.env.DUFFEL_API_KEY)
 }
@@ -42,9 +50,14 @@ export function geminiModel() {
   return process.env.GEMINI_MODEL || "gemini-2.0-flash"
 }
 
+export function mistralModel() {
+  return process.env.MISTRAL_MODEL || "mistral-small-latest"
+}
+
 export function providerStatus() {
   return {
     gemini: isGeminiConfigured(),
+    mistral: isMistralConfigured(),
     supabase: isSupabaseConfigured(),
     duffel: isDuffelConfigured(),
     expedia: isExpediaConfigured(),

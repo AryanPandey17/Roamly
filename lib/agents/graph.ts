@@ -1,4 +1,4 @@
-import { isGeminiConfigured } from "@/lib/config"
+import { isLlmConfigured } from "@/lib/config"
 import { pipelineLog } from "@/lib/agents/log"
 import { calculateTotal, cheapestFlight, nightsBetween, stamp } from "@/lib/agents/math"
 import { runBudgetAgent } from "@/lib/agents/budget"
@@ -21,7 +21,7 @@ export async function runPlanningGraph(
   input: PlanTripInput,
   emit: (event: GraphEvent) => void | Promise<void>
 ): Promise<TripRecord> {
-  const useLlm = isGeminiConfigured()
+  const useLlm = isLlmConfigured()
   const events: AgentEvent[] = []
   const started = Date.now()
 

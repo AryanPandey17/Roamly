@@ -9,9 +9,11 @@ import {
   NegotiationMessage,
   mockNegotiations,
 } from "@/lib/mockData"
-import { apiGet, fetchStatus, planTripStream, type ProviderStatus } from "@/lib/api"
+import { apiGet, apiSend, fetchStatus, planTripStream, type ProviderStatus } from "@/lib/api"
 import { getBrowserSupabase, isBrowserSupabaseConfigured } from "@/lib/supabase/browser"
 import type { AgentEvent, TripRecord } from "@/lib/types/trip"
+import type { Session } from "@supabase/supabase-js"
+import type { SavedPlace, SavedPlaceCategory, UserProfile } from "@/lib/types/persistence"
 
 export type ActivePage =
   | "landing"
@@ -35,13 +37,20 @@ export type ActivePage =
   | "settings"
   | "about"
 
-type SavedItemId = string | number
+type SavedItemId = string
+type AppUser = { id?: string; name: string; email: string; avatar: string }
+type NotificationPreferences = {
+  tripUpdates: boolean
+  planningComplete: boolean
+  budgetAlerts: boolean
+}
+type SavedItems = Record<SavedPlaceCategory, SavedItemId[]>
 
 interface AppContextType {
   activePage: ActivePage
   setActivePage: (page: ActivePage) => void
-  user: { id?: string; name: string; email: string; avatar: string } | null
-  setUser: (user: { id?: string; name: string; email: string; avatar: string } | null) => void
+  user: AppUser | null
+  setUser: (user: AppUser | null) => void
   requirements: TripRequirements
   setRequirements: React.Dispatch<React.SetStateAction<TripRequirements>>
   logs: AgentActivityLog[]
@@ -56,19 +65,28 @@ interface AppContextType {
   setTheme: (t: "light" | "dark" | "system") => void
   currency: string
   setCurrency: (c: string) => void
-  savedItems: { hotels: SavedItemId[]; flights: SavedItemId[]; recs: SavedItemId[] }
-  setSavedItems: React.Dispatch<
-    React.SetStateAction<{ hotels: SavedItemId[]; flights: SavedItemId[]; recs: SavedItemId[] }>
-  >
-  toggleSaveItem: (category: "hotels" | "flights" | "recs", id: SavedItemId, payload?: unknown, title?: string) => void
+  notifications: NotificationPreferences
+  setNotifications: (notifications: NotificationPreferences) => void
+  savedItems: SavedItems
+  savedPlaces: SavedPlace[]
+  toggleSaveItem: (
+    category: SavedPlaceCategory,
+    id: SavedItemId,
+    payload?: unknown,
+    title?: string
+  ) => Promise<void>
   providers: ProviderStatus
   accessToken: string | null
   activeTrip: TripRecord | null
   setActiveTrip: (trip: TripRecord | null) => void
   trips: TripRecord[]
   refreshTrips: () => Promise<void>
+  refreshSaved: () => Promise<void>
+  profile: UserProfile | null
+  updateProfile: (patch: Record<string, unknown>) => Promise<UserProfile | null>
   supabaseEnabled: boolean
   authError: string | null
+  syncError: string | null
   signIn: (email: string, password: string) => Promise<boolean>
   signUp: (name: string, email: string, password: string) => Promise<boolean>
   signOut: () => Promise<void>
@@ -80,12 +98,41 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 
 const emptyProviders: ProviderStatus = {
   gemini: false,
+  mistral: false,
   supabase: false,
   duffel: false,
   expedia: false,
   maps: false,
   activities: false,
   tavily: false,
+}
+
+const emptySavedItems: SavedItems = { hotels: [], flights: [], recs: [] }
+const demoSavedItems: SavedItems = {
+  hotels: ["hotel-1"],
+  flights: ["flight-1"],
+  recs: ["rec-1", "rec-2"],
+}
+const defaultNotifications: NotificationPreferences = {
+  tripUpdates: true,
+  planningComplete: true,
+  budgetAlerts: true,
+}
+
+function userFromSession(session: Session): AppUser {
+  return {
+    id: session.user.id,
+    name: (session.user.user_metadata?.full_name as string) || session.user.email?.split("@")[0] || "Traveler",
+    email: session.user.email || "",
+    avatar: "",
+  }
+}
+
+function savedItemsFromPlaces(places: SavedPlace[]): SavedItems {
+  return places.reduce<SavedItems>(
+    (items, place) => ({ ...items, [place.category]: [...items[place.category], place.external_id] }),
+    emptySavedItems
+  )
 }
 
 function toLog(event: AgentEvent): AgentActivityLog {
@@ -110,26 +157,28 @@ function toNegotiation(event: AgentEvent, index: number): NegotiationMessage | n
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const supabaseEnabled = isBrowserSupabaseConfigured()
   const [activePage, setActivePage] = useState<ActivePage>("landing")
-  const [user, setUser] = useState<{ id?: string; name: string; email: string; avatar: string } | null>(null)
+  const [user, setUser] = useState<AppUser | null>(null)
   const [requirements, setRequirements] = useState<TripRequirements>(initialRequirements)
   const [logs, setLogs] = useState<AgentActivityLog[]>([])
   const [negotiations, setNegotiations] = useState<NegotiationMessage[]>([])
   const [isDemoRunning, setIsDemoRunning] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("light")
-  const [currency, setCurrency] = useState("INR")
-  const [savedItems, setSavedItems] = useState<{
-    hotels: SavedItemId[]
-    flights: SavedItemId[]
-    recs: SavedItemId[]
-  }>({ hotels: ["hotel-1"], flights: ["flight-1"], recs: ["rec-1", "rec-2"] })
+  const [theme, setThemeState] = useState<"light" | "dark" | "system">("light")
+  const [currency, setCurrencyState] = useState("INR")
+  const [notifications, setNotificationsState] = useState<NotificationPreferences>(defaultNotifications)
+  const [savedItems, setSavedItems] = useState<SavedItems>(
+    supabaseEnabled ? emptySavedItems : demoSavedItems
+  )
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
   const [providers, setProviders] = useState<ProviderStatus>(emptyProviders)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [activeTrip, setActiveTrip] = useState<TripRecord | null>(null)
   const [trips, setTrips] = useState<TripRecord[]>([])
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const abortRef = useRef(false)
-  const supabaseEnabled = isBrowserSupabaseConfigured()
 
   useEffect(() => {
     fetchStatus().then(setProviders).catch(() => setProviders(emptyProviders))
@@ -148,39 +197,109 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrips(data.trips || [])
   }, [accessToken, supabaseEnabled])
 
-  useEffect(() => {
-    const supabase = getBrowserSupabase()
-    if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data.session
-      if (!session) return
-      setAccessToken(session.access_token)
-      setUser({
-        id: session.user.id,
-        name: (session.user.user_metadata?.full_name as string) || session.user.email?.split("@")[0] || "Traveler",
-        email: session.user.email || "",
-        avatar: "",
-      })
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAccessToken(session?.access_token ?? null)
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: (session.user.user_metadata?.full_name as string) || session.user.email?.split("@")[0] || "Traveler",
-          email: session.user.email || "",
-          avatar: "",
-        })
-      } else {
-        setUser(null)
+  const refreshSaved = useCallback(async () => {
+    if (!supabaseEnabled || !accessToken) return
+    const data = await apiGet<{ items: SavedPlace[] }>("/api/saved", accessToken)
+    const items = data.items || []
+    setSavedPlaces(items)
+    setSavedItems(savedItemsFromPlaces(items))
+  }, [accessToken, supabaseEnabled])
+
+  const refreshProfile = useCallback(async () => {
+    if (!supabaseEnabled || !accessToken) return
+    const data = await apiGet<{ profile: UserProfile | null }>("/api/profile", accessToken)
+    if (!data.profile) return
+    const nextProfile = data.profile
+    setProfile(nextProfile)
+    if (nextProfile.full_name) {
+      setUser((current) => (current ? { ...current, name: nextProfile.full_name! } : current))
+    }
+    if (nextProfile.theme === "light" || nextProfile.theme === "dark" || nextProfile.theme === "system") {
+      setThemeState(nextProfile.theme)
+    }
+    if (nextProfile.currency) setCurrencyState(nextProfile.currency)
+    if (nextProfile.notifications) {
+      setNotificationsState({ ...defaultNotifications, ...nextProfile.notifications })
+    }
+  }, [accessToken, supabaseEnabled])
+
+  const updateProfile = useCallback(
+    async (patch: Record<string, unknown>): Promise<UserProfile | null> => {
+      if (!supabaseEnabled || !accessToken) return null
+      try {
+        const data = await apiSend<{ profile: UserProfile }>("/api/profile", accessToken, "PUT", patch)
+        if (!data.profile) throw new Error("Unable to save profile.")
+        setProfile(data.profile)
+        if (data.profile.full_name) {
+          setUser((current) => (current ? { ...current, name: data.profile.full_name! } : current))
+        }
+        setSyncError(null)
+        return data.profile
+      } catch (error) {
+        setSyncError(error instanceof Error ? error.message : "Unable to save profile.")
+        return null
       }
-    })
-    return () => sub.subscription.unsubscribe()
+    },
+    [accessToken, supabaseEnabled]
+  )
+
+  const setTheme = useCallback(
+    (nextTheme: "light" | "dark" | "system") => {
+      setThemeState(nextTheme)
+      void updateProfile({ theme: nextTheme })
+    },
+    [updateProfile]
+  )
+
+  const setCurrency = useCallback(
+    (nextCurrency: string) => {
+      setCurrencyState(nextCurrency)
+      void updateProfile({ currency: nextCurrency })
+    },
+    [updateProfile]
+  )
+
+  const setNotifications = useCallback(
+    (nextNotifications: NotificationPreferences) => {
+      setNotificationsState(nextNotifications)
+      void updateProfile({ notifications: nextNotifications })
+    },
+    [updateProfile]
+  )
+
+  const applySession = useCallback((session: Session | null) => {
+    setAccessToken(session?.access_token ?? null)
+    setUser(session ? userFromSession(session) : null)
   }, [])
 
   useEffect(() => {
-    refreshTrips().catch(() => undefined)
-  }, [refreshTrips])
+    const supabase = getBrowserSupabase()
+    if (!supabase) return
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) setSyncError(error.message)
+        applySession(data.session)
+      })
+      .catch(() => setSyncError("Unable to restore your Supabase session."))
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [applySession])
+
+  useEffect(() => {
+    if (!accessToken) {
+      setTrips([])
+      setSavedPlaces([])
+      setSavedItems(supabaseEnabled ? emptySavedItems : demoSavedItems)
+      setProfile(null)
+      return
+    }
+    Promise.all([refreshTrips(), refreshSaved(), refreshProfile()]).catch((error) => {
+      setSyncError(error instanceof Error ? error.message : "Unable to sync your account data.")
+    })
+  }, [accessToken, refreshProfile, refreshSaved, refreshTrips, supabaseEnabled])
 
   const signIn = async (email: string, password: string) => {
     setAuthError(null)
@@ -190,11 +309,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActivePage("dashboard")
       return true
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setAuthError(error.message)
       return false
     }
+    applySession(data.session)
     setActivePage("dashboard")
     return true
   }
@@ -207,7 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActivePage("dashboard")
       return true
     }
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
@@ -216,14 +336,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthError(error.message)
       return false
     }
+    if (!data.session) {
+      setAuthError("Check your email to confirm your account, then sign in to sync your trips.")
+      return true
+    }
+    applySession(data.session)
     setActivePage("dashboard")
     return true
   }
 
   const signOut = async () => {
     await getBrowserSupabase()?.auth.signOut()
-    setUser(null)
-    setAccessToken(null)
+    applySession(null)
     setActiveTrip(null)
     setActivePage("landing")
   }
@@ -252,22 +376,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleSaveItem = async (
-    category: "hotels" | "flights" | "recs",
+    category: SavedPlaceCategory,
     id: SavedItemId,
     payload?: unknown,
     title?: string
   ) => {
-    setSavedItems((prev) => {
-      const items = [...prev[category]]
-      if (items.includes(id)) return { ...prev, [category]: items.filter((x) => x !== id) }
-      return { ...prev, [category]: [...items, id] }
+    const normalizedId = String(id)
+    const previousItems = savedItems
+    const isSaved = previousItems[category].includes(normalizedId)
+    setSavedItems({
+      ...previousItems,
+      [category]: isSaved
+        ? previousItems[category].filter((itemId) => itemId !== normalizedId)
+        : [...previousItems[category], normalizedId],
     })
-    if (supabaseEnabled && accessToken) {
-      await fetch("/api/saved", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ category, externalId: id, payload, title }),
+    if (!supabaseEnabled || !accessToken) return
+    try {
+      await apiSend<{ saved: boolean }>("/api/saved", accessToken, "POST", {
+        category,
+        externalId: normalizedId,
+        payload,
+        title,
       })
+      await refreshSaved()
+      setSyncError(null)
+    } catch (error) {
+      setSavedItems(previousItems)
+      setSyncError(error instanceof Error ? error.message : "Unable to update saved places.")
     }
   }
 
@@ -322,11 +457,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (trip) {
         setActiveTrip(trip)
         setTrips((prev) => [trip, ...prev.filter((t) => t.id !== trip.id)])
+        if (supabaseEnabled && accessToken) await refreshTrips()
       }
       setIsDemoRunning(false)
       setActivePage("itinerary")
     } catch (error) {
       setIsDemoRunning(false)
+      setSyncError(error instanceof Error ? error.message : "Planning failed")
       setLogs((prev) => [
         ...prev,
         {
@@ -381,7 +518,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const startPlanning = (reqs: TripRequirements) => {
-    if (providers.gemini) void runLivePlanning(reqs)
+    // The deterministic graph is still fully functional without Gemini. Run it
+    // for a signed-in Supabase user so a completed plan is actually persisted.
+    if (providers.mistral || providers.gemini || (supabaseEnabled && Boolean(accessToken))) void runLivePlanning(reqs)
     else runMockPlanning()
   }
 
@@ -421,8 +560,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setTheme,
         currency,
         setCurrency,
+        notifications,
+        setNotifications,
         savedItems,
-        setSavedItems,
+        savedPlaces,
         toggleSaveItem,
         providers,
         accessToken,
@@ -430,8 +571,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveTrip,
         trips,
         refreshTrips,
+        refreshSaved,
+        profile,
+        updateProfile,
         supabaseEnabled,
         authError,
+        syncError,
         signIn,
         signUp,
         signOut,

@@ -47,7 +47,11 @@ export default function LocalRecsPage() {
                   <span className="badge draft" style={{ marginTop: ".35rem" }}>{rec.category}</span>
                 </div>
               </div>
-              <button className="secondary-button" style={{ padding: ".45rem" }} onClick={() => toggleSaveItem("recs", rec.id)}>
+              <button
+                className="secondary-button"
+                style={{ padding: ".45rem" }}
+                onClick={() => void toggleSaveItem("recs", rec.id, rec, rec.name)}
+              >
                 <Heart style={{ width: ".9rem", fill: savedItems.recs.includes(rec.id) ? "#e05f7a" : "none", color: savedItems.recs.includes(rec.id) ? "#e05f7a" : undefined }} />
               </button>
             </div>

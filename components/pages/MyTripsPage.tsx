@@ -6,11 +6,12 @@ import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
 import { mockTrips } from "@/lib/mockData"
-import { apiSend } from "@/lib/api"
+import { apiGet, apiSend } from "@/lib/api"
+import type { TripRecord } from "@/lib/types/trip"
 import { viewTripCards } from "@/lib/trip/view"
 
 export default function MyTripsPage() {
-  const { setActivePage, trips, setActiveTrip, accessToken, supabaseEnabled, refreshTrips, activeTrip } = useApp()
+  const { setActivePage, trips, setActiveTrip, accessToken, supabaseEnabled, refreshTrips, activeTrip, syncError } = useApp()
   const live = viewTripCards(trips)
   const source = supabaseEnabled ? live : mockTrips
   const [search, setSearch] = useState("")
@@ -63,6 +64,8 @@ export default function MyTripsPage() {
         </select>
       </div>
 
+      {syncError && supabaseEnabled && <div className="demo-banner" style={{ marginBottom: "1rem" }}><p>{syncError}</p></div>}
+
       <div className="trip-card-grid">
         {displayed.map((trip) => (
           <div className="trip-card-item" key={trip.id}>
@@ -79,8 +82,16 @@ export default function MyTripsPage() {
               <button
                 className="primary-button"
                 style={{ flex: 1 }}
-                onClick={() => {
-                  const full = trips.find((t) => t.id === trip.id) || activeTrip
+                onClick={async () => {
+                  let full = trips.find((t) => t.id === trip.id) || activeTrip
+                  if (supabaseEnabled && accessToken) {
+                    try {
+                      const data = await apiGet<{ trip: TripRecord | null }>(`/api/trips/${trip.id}`, accessToken)
+                      if (data.trip) full = data.trip
+                    } catch {
+                      // The list entry already has enough itinerary data for a graceful fallback.
+                    }
+                  }
                   if (full) setActiveTrip(full)
                   setActivePage("itinerary")
                 }}

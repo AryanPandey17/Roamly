@@ -53,7 +53,9 @@ export default function FlightsPage() {
                 <button
                   className="secondary-button"
                   style={{ padding: ".45rem" }}
-                  onClick={() => toggleSaveItem("flights", flight.id)}
+                  onClick={() =>
+                    void toggleSaveItem("flights", flight.id, flight, `${flight.airline} ${flight.flightNumber}`)
+                  }
                 >
                   <Heart style={{ width: ".9rem", fill: savedItems.flights.includes(flight.id) ? "#e05f7a" : "none", color: savedItems.flights.includes(flight.id) ? "#e05f7a" : undefined }} />
                 </button>

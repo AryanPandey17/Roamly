@@ -11,13 +11,19 @@ export function createBrowserSupabase() {
 
 export function createServerSupabase(accessToken?: string | null): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
-    global: accessToken
-      ? { headers: { Authorization: `Bearer ${accessToken}` } }
-      : undefined,
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
+  // User-facing API routes must always use the public key plus the caller's JWT.
+  // Using a service-role key here bypasses RLS and can make an auth wiring issue
+  // look like it worked while writing data under the wrong security context.
+  const client = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` } }
+        : undefined,
+      auth: { persistSession: false, autoRefreshToken: false },
+    }
+  )
   return client
 }
 

@@ -57,9 +57,11 @@ GEMINI_MODEL=gemini-3.6-flash
 
 ### Supabase (auth + saved trips)
 
-1. Create a project and paste `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-2. Optional: `SUPABASE_SERVICE_ROLE_KEY` for API writes.
-3. Run `supabase/schema.sql` in the SQL editor.
+1. Create a project and paste `NEXT_PUBLIC_SUPABASE_URL` plus that same project's **publishable key** (or legacy `anon` key) into `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. Run `supabase/schema.sql` in the SQL editor. This creates `profiles`, `trips`, `agent_events`, and `saved_places`, with the RLS policies the app requires.
+3. Restart the Next.js server after changing any `NEXT_PUBLIC_*` variable.
+
+`SUPABASE_SERVICE_ROLE_KEY` is optional and is intentionally not used for browser-backed writes. Keep it server-only for future trusted admin tasks; the app APIs write with the signed-in user's JWT so RLS is enforced. If the dashboard shows no rows, first verify the public key is valid and that the schema script has been run.
 
 If those vars are empty, login is demo-only and trips stay in memory / mock data.
 

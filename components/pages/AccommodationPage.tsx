@@ -40,7 +40,11 @@ export default function AccommodationPage() {
               </div>
               <div style={{ display: "flex", gap: ".35rem", alignItems: "center" }}>
                 {hotel.notes && <span className="badge ready">Proposed</span>}
-                <button className="secondary-button" style={{ padding: ".45rem" }} onClick={() => toggleSaveItem("hotels", hotel.id)}>
+                <button
+                  className="secondary-button"
+                  style={{ padding: ".45rem" }}
+                  onClick={() => void toggleSaveItem("hotels", hotel.id, hotel, hotel.name)}
+                >
                   <Heart style={{ width: ".9rem", fill: savedItems.hotels.includes(hotel.id) ? "#e05f7a" : "none", color: savedItems.hotels.includes(hotel.id) ? "#e05f7a" : undefined }} />
                 </button>
               </div>

@@ -1,22 +1,18 @@
 "use client"
 
-import { useState } from "react"
 import { Bell, Globe, Palette, Settings, Shield } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
 
 export default function SettingsPage() {
-  const { theme, setTheme, currency, setCurrency } = useApp()
-  const [notifications, setNotifications] = useState({
-    tripUpdates: true,
-    planningComplete: true,
-    budgetAlerts: true,
-  })
+  const { theme, setTheme, currency, setCurrency, notifications, setNotifications, supabaseEnabled, syncError } = useApp()
 
   return (
     <AppLayout maxWidth="max-w-3xl">
       <PageHeader eyebrow="Preferences" title="Settings" description="Appearance, notifications, and account preferences." icon={Settings} />
+
+      {syncError && supabaseEnabled && <div className="demo-banner" style={{ marginBottom: "1rem" }}><p>{syncError}</p></div>}
 
       <div className="surface panel-pad" style={{ marginBottom: "1rem" }}>
         <p className="section-title"><Palette /> Appearance</p>
@@ -46,7 +42,7 @@ export default function SettingsPage() {
               type="button"
               className={`choice-dot ${notifications[key] ? "is-selected" : ""}`}
               style={{ width: "2.5rem", height: "1.35rem", borderRadius: "99px", background: notifications[key] ? "#5b5ce2" : "#e0e4ed", border: "none", position: "relative" }}
-              onClick={() => setNotifications((n) => ({ ...n, [key]: !n[key] }))}
+              onClick={() => setNotifications({ ...notifications, [key]: !notifications[key] })}
               aria-label={label}
             />
           </div>

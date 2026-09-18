@@ -21,12 +21,13 @@ export default function ArchitecturePage() {
       <PageHeader
         eyebrow="Technical architecture"
         title="Multi-Agent Architecture"
-        description="LangGraph-style routing is deterministic. Gemini runs each agent. Supabase stores trips when configured."
+        description="LangGraph-style routing is deterministic. Mistral runs each agent, with Gemini as fallback. Supabase stores trips when configured."
         icon={Network}
       />
 
       <div className="chip-grid" style={{ marginBottom: "1.25rem" }}>
-        <span className={`chip ${providers.gemini ? "is-selected" : ""}`}>Gemini {providers.gemini ? "on" : "off"}</span>
+        <span className={`chip ${providers.mistral ? "is-selected" : ""}`}>Mistral {providers.mistral ? "on" : "off"}</span>
+        <span className={`chip ${providers.gemini ? "is-selected" : ""}`}>Gemini fallback {providers.gemini ? "on" : "off"}</span>
         <span className={`chip ${providers.supabase ? "is-selected" : ""}`}>Supabase {providers.supabase ? "on" : "off"}</span>
         <span className={`chip ${providers.duffel ? "is-selected" : ""}`}>Duffel {providers.duffel ? "on" : "catalog"}</span>
         <span className={`chip ${providers.expedia ? "is-selected" : ""}`}>Hotels API {providers.expedia ? "on" : "catalog"}</span>

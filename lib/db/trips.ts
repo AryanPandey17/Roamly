@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/config"
 import { pipelineLog, pipelineWarn } from "@/lib/agents/log"
 import { createServerSupabase } from "@/lib/supabase/client"
 import type { AgentEvent, FinalItinerary, TripRecord, TripState } from "@/lib/types/trip"
+import type { SavedPlace, SavedPlaceCategory, UserProfile } from "@/lib/types/persistence"
 
 type TripRow = {
   id: string
@@ -80,13 +81,13 @@ export async function persistTrip(accessToken: string | null, trip: TripRecord, 
 
   if (error || !data) {
     pipelineWarn("persist", "insert failed", error)
-    return trip
+    throw new Error(`Unable to save this trip: ${error?.message || "Supabase did not return a trip."}`)
   }
 
   pipelineLog("persist", `saved id=${data.id}`)
 
   if (trip.events.length) {
-    await supabase.from("agent_events").insert(
+    const { error: eventsError } = await supabase.from("agent_events").insert(
       trip.events.map((e) => ({
         trip_id: data.id,
         agent: e.agent,
@@ -96,6 +97,11 @@ export async function persistTrip(accessToken: string | null, trip: TripRecord, 
         payload: { status: e.status, details: e.details },
       }))
     )
+    if (eventsError) {
+      // The itinerary has already been stored successfully. Preserve that result
+      // while surfacing the missing event history in server diagnostics.
+      pipelineWarn("persist", "agent event insert failed", eventsError)
+    }
   }
 
   return mapTrip(data as TripRow, trip.events)
@@ -110,8 +116,7 @@ export async function listTrips(accessToken: string | null, userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
   if (error) {
-    console.warn(error)
-    return []
+    throw new Error(`Unable to load trips: ${error.message}`)
   }
   return (data as TripRow[]).map((row) => mapTrip(row))
 }
@@ -119,8 +124,14 @@ export async function listTrips(accessToken: string | null, userId: string) {
 export async function getTrip(accessToken: string | null, id: string, userId: string) {
   const supabase = createServerSupabase(accessToken)
   if (!supabase) return null
-  const { data, error } = await supabase.from("trips").select("*").eq("id", id).eq("user_id", userId).single()
-  if (error || !data) return null
+  const { data, error } = await supabase
+    .from("trips")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle()
+  if (error) throw new Error(`Unable to load trip: ${error.message}`)
+  if (!data) return null
   const { data: events } = await supabase
     .from("agent_events")
     .select("*")
@@ -142,7 +153,8 @@ export async function getTrip(accessToken: string | null, id: string, userId: st
 export async function deleteTrip(accessToken: string | null, id: string, userId: string) {
   const supabase = createServerSupabase(accessToken)
   if (!supabase) return
-  await supabase.from("trips").delete().eq("id", id).eq("user_id", userId)
+  const { error } = await supabase.from("trips").delete().eq("id", id).eq("user_id", userId)
+  if (error) throw new Error(`Unable to delete trip: ${error.message}`)
 }
 
 export async function currentUserId(accessToken: string | null) {
@@ -163,54 +175,62 @@ export async function upsertProfile(
   if (!supabase) return null
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ id: userId, ...patch, updated_at: new Date().toISOString() })
+    .upsert({ ...patch, id: userId, updated_at: new Date().toISOString() })
     .select("*")
     .single()
   if (error) {
-    console.warn(error)
-    return null
+    throw new Error(`Unable to save profile: ${error.message}`)
   }
-  return data
+  return data as UserProfile
 }
 
 export async function getProfile(accessToken: string | null, userId: string) {
   const supabase = createServerSupabase(accessToken)
   if (!supabase) return null
-  const { data } = await supabase.from("profiles").select("*").eq("id", userId).single()
-  return data
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle()
+  if (error) throw new Error(`Unable to load profile: ${error.message}`)
+  return data as UserProfile | null
 }
 
 export async function listSaved(accessToken: string | null, userId: string) {
   const supabase = createServerSupabase(accessToken)
   if (!supabase) return []
-  const { data } = await supabase.from("saved_places").select("*").eq("user_id", userId).order("created_at", { ascending: false })
-  return data ?? []
+  const { data, error } = await supabase
+    .from("saved_places")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(`Unable to load saved places: ${error.message}`)
+  return (data ?? []) as SavedPlace[]
 }
 
 export async function toggleSaved(
   accessToken: string | null,
   userId: string,
-  item: { category: string; externalId: string; title?: string; payload?: unknown }
+  item: { category: SavedPlaceCategory; externalId: string; title?: string; payload?: unknown }
 ) {
   const supabase = createServerSupabase(accessToken)
   if (!supabase) return { saved: false }
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from("saved_places")
     .select("id")
     .eq("user_id", userId)
     .eq("category", item.category)
     .eq("external_id", item.externalId)
     .maybeSingle()
+  if (lookupError) throw new Error(`Unable to check saved place: ${lookupError.message}`)
   if (existing) {
-    await supabase.from("saved_places").delete().eq("id", existing.id)
+    const { error } = await supabase.from("saved_places").delete().eq("id", existing.id)
+    if (error) throw new Error(`Unable to remove saved place: ${error.message}`)
     return { saved: false }
   }
-  await supabase.from("saved_places").insert({
+  const { error } = await supabase.from("saved_places").insert({
     user_id: userId,
     category: item.category,
     external_id: item.externalId,
     title: item.title,
     payload: item.payload,
   })
+  if (error) throw new Error(`Unable to save place: ${error.message}`)
   return { saved: true }
 }

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import { geminiModel, isGeminiConfigured } from "@/lib/config"
+import { geminiModel, isGeminiConfigured, isMistralConfigured, mistralModel } from "@/lib/config"
 import { pipelineError, pipelineLog, pipelineWarn } from "@/lib/agents/log"
 import { parseJsonFromText } from "@/lib/agents/math"
 
@@ -12,8 +12,16 @@ export async function runGeminiJson<T>(input: {
   system: string
   user: string
 }): Promise<T> {
+  if (isMistralConfigured()) {
+    try {
+      return await runMistralJson<T>(input)
+    } catch (error) {
+      pipelineWarn("mistral", "request failed, falling back to Gemini", error)
+    }
+  }
+
   if (!isGeminiConfigured()) {
-    throw new Error("GEMINI_API_KEY is not configured")
+    throw new Error("Neither MISTRAL_API_KEY nor GEMINI_API_KEY is configured")
   }
 
   const model = genAI().getGenerativeModel({
@@ -70,4 +78,44 @@ export async function runGeminiJson<T>(input: {
 
 function genAI() {
   return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
+}
+
+async function runMistralJson<T>(input: { system: string; user: string }): Promise<T> {
+  const modelName = mistralModel()
+  const prompt = `${input.user}\n\nReturn JSON only.`
+  pipelineLog("mistral", `generate model=${modelName} promptChars=${prompt.length}`)
+
+  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: `${input.system}\n\nAlways finish with valid JSON matching the output contract. No markdown fences.` },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Mistral API returned ${response.status}: ${await response.text()}`)
+  }
+
+  const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string | null } }> }
+  const text = payload.choices?.[0]?.message?.content
+  if (!text) throw new Error("Mistral API returned no message content")
+  pipelineLog("mistral", `response chars=${text.length}`)
+
+  try {
+    const parsed = parseJsonFromText<T>(text)
+    pipelineLog("mistral", "parsed JSON")
+    return parsed
+  } catch (error) {
+    pipelineWarn("mistral", "invalid JSON, falling back to Gemini", error)
+    throw error
+  }
 }

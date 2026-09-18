@@ -36,8 +36,8 @@ export default function ItineraryPage() {
           {itinerary?.assumptions?.length ? (
             <p style={{ fontSize: ".78rem", marginTop: ".35rem" }}>Assumptions: {itinerary.assumptions.join(" · ")}</p>
           ) : null}
-          {!providers.gemini && (
-            <p style={{ fontSize: ".75rem", color: "#a46a18", marginTop: ".35rem" }}>Showing catalog/demo data until GEMINI_API_KEY is set.</p>
+          {!providers.mistral && !providers.gemini && (
+            <p style={{ fontSize: ".75rem", color: "#a46a18", marginTop: ".35rem" }}>Showing catalog/demo data until MISTRAL_API_KEY or GEMINI_API_KEY is set.</p>
           )}
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
