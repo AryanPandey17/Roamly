@@ -5,14 +5,14 @@ import { ArrowRight, Compass, Mail, User } from "lucide-react"
 import { useApp } from "@/context/AppContext"
 
 export default function SignupPage() {
-  const { setActivePage, setUser } = useApp()
+  const { setActivePage, signUp, signInWithGoogle, authError } = useApp()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [error, setError] = useState("")
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !email || !password || !confirm) {
       setError("Please fill in all fields.")
@@ -22,8 +22,8 @@ export default function SignupPage() {
       setError("Passwords do not match.")
       return
     }
-    setUser({ name, email, avatar: "" })
-    setActivePage("dashboard")
+    const ok = await signUp(name, email, password)
+    if (!ok) setError(authError || "Could not create account.")
   }
 
   return (
@@ -35,7 +35,7 @@ export default function SignupPage() {
         </button>
         <h2>Create your account</h2>
         <p>Start planning smarter trips with AI agents.</p>
-        {error && <div className="auth-error">{error}</div>}
+        {(error || authError) && <div className="auth-error">{error || authError}</div>}
         <form onSubmit={handleSignup}>
           <div className="auth-field">
             <label htmlFor="name">Full name</label>
@@ -58,7 +58,7 @@ export default function SignupPage() {
           </button>
         </form>
         <div className="auth-divider">or</div>
-        <button type="button" className="google-btn"><User /> Continue with Google</button>
+        <button type="button" className="google-btn" onClick={() => void signInWithGoogle()}><User /> Continue with Google</button>
         <p style={{ textAlign: "center", marginTop: "1.25rem", fontSize: ".82rem", color: "#687186" }}>
           Already have an account?{" "}
           <button className="text-button" style={{ padding: 0 }} onClick={() => setActivePage("login")}>Log in</button>

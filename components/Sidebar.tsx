@@ -27,11 +27,10 @@ const navItems: { page: ActivePage; label: string; icon: typeof Compass; accent?
 ]
 
 export default function Sidebar() {
-  const { activePage, setActivePage, user, setUser, startDemo } = useApp()
+  const { activePage, setActivePage, user, startDemo, signOut } = useApp()
 
   const goHome = () => {
-    setUser(null)
-    setActivePage("landing")
+    void signOut()
   }
 
   return (

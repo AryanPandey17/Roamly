@@ -5,12 +5,13 @@ import { Check, Heart, Plane } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
-import { mockFlights } from "@/lib/mockData"
+import { viewFlights } from "@/lib/trip/view"
 import { formatCurrency } from "@/lib/utils"
 
 export default function FlightsPage() {
-  const { requirements, savedItems, toggleSaveItem } = useApp()
-  const [selected, setSelected] = useState(mockFlights.find((f) => f.selected)?.id ?? "flight-1")
+  const { requirements, savedItems, toggleSaveItem, activeTrip } = useApp()
+  const flights = viewFlights(activeTrip)
+  const [selected, setSelected] = useState(flights[0]?.id ?? "flight-1")
   const [compare, setCompare] = useState<string[]>([])
 
   const toggleCompare = (id: string) => {
@@ -34,11 +35,11 @@ export default function FlightsPage() {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
-        {mockFlights.map((flight) => (
+        {flights.map((flight) => (
           <div className="item-card" key={flight.id}>
             <div className="item-card-header">
               <div style={{ display: "flex", gap: ".75rem", alignItems: "center" }}>
-                <span style={{ fontSize: "1.75rem" }}>{flight.logo}</span>
+                <span style={{ fontSize: "1.75rem" }}>✈️</span>
                 <div>
                   <h3>{flight.airline} · {flight.flightNumber}</h3>
                   <p style={{ fontSize: ".75rem", color: "#687186", marginTop: ".15rem" }}>
@@ -47,7 +48,7 @@ export default function FlightsPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: ".35rem", alignItems: "center" }}>
-                {flight.badge && <span className="badge ready">{flight.badge}</span>}
+                {flight.notes && <p style={{ fontSize: ".75rem", color: "#5b5ce2", marginTop: ".35rem" }}>{flight.notes}</p>}
                 {selected === flight.id && <span className="badge completed">Selected</span>}
                 <button
                   className="secondary-button"

@@ -3,9 +3,11 @@
 import { Code, Database, Layers, Network } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
+import { useApp } from "@/context/AppContext"
 import { mockArchitectures } from "@/lib/mockData"
 
 export default function ArchitecturePage() {
+  const { providers } = useApp()
   const stack = [
     { label: "Frontend", value: mockArchitectures.frontend, icon: Code },
     { label: "Backend API", value: mockArchitectures.backend, icon: Network },
@@ -19,9 +21,17 @@ export default function ArchitecturePage() {
       <PageHeader
         eyebrow="Technical architecture"
         title="Multi-Agent Architecture"
-        description="How the production system will work — ready for Gemini, Supabase, and travel APIs."
+        description="LangGraph-style routing is deterministic. Gemini runs each agent. Supabase stores trips when configured."
         icon={Network}
       />
+
+      <div className="chip-grid" style={{ marginBottom: "1.25rem" }}>
+        <span className={`chip ${providers.gemini ? "is-selected" : ""}`}>Gemini {providers.gemini ? "on" : "off"}</span>
+        <span className={`chip ${providers.supabase ? "is-selected" : ""}`}>Supabase {providers.supabase ? "on" : "off"}</span>
+        <span className={`chip ${providers.duffel ? "is-selected" : ""}`}>Duffel {providers.duffel ? "on" : "catalog"}</span>
+        <span className={`chip ${providers.expedia ? "is-selected" : ""}`}>Hotels API {providers.expedia ? "on" : "catalog"}</span>
+        <span className={`chip ${providers.maps ? "is-selected" : ""}`}>Maps {providers.maps ? "on" : "estimate"}</span>
+      </div>
 
       <div className="content-grid-wide" style={{ marginBottom: "1.25rem" }}>
         {stack.map(({ label, value, icon: Icon }) => (

@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Roamly — AI Multi-Agent Trip Planner
 
-## Getting Started
+Premium travel-planning prototype where four specialized agents collaborate: **Supervisor**, **Logistics**, **Recommendations**, and **Budget**. They parse a trip brief, propose flights and stays, negotiate cost vs quality, and produce a day-by-day itinerary.
 
-First, run the development server:
+## Current status
+
+Working full-stack **frontend + agent graph + persistence hooks**. Live LLM planning uses **Google Gemini**. Auth and trip storage use **Supabase** when configured. Flight / hotel / maps APIs are adapters behind tools and fall back to a destination catalog until those keys are reviewed.
+
+| Area | Status |
+|------|--------|
+| Landing, auth, dashboard, plan-trip wizard | Done |
+| Live planning stream (logs + negotiation + itinerary) | Done |
+| Gemini agents (parse → logistics → recs → budget loop → finalize) | Done (Gemini 3.x compatible: no `function` role) |
+| Deterministic `calculateTotal` (Budget never does mental math) | Done |
+| Supabase schema, RLS, trip/profile/saved APIs | Done — enable with env + SQL |
+| Duffel / Expedia / Viator / Google Maps | Placeholders — catalog until keys are approved |
+| Demo Mode | Runs the live graph when `GEMINI_API_KEY` is set; otherwise the mock replay |
+
+## Architecture
+
+```
+User form
+  → POST /api/trips/plan (SSE)
+    → Supervisor parse
+    → Logistics (searchFlights + getTransitTime)
+    → Recommendations (searchHotels + searchActivities)
+    → Budget (calculateTotal in code)
+    → reject + ceiling → Recommendations again (max 3)
+    → compromise fallback if still over
+    → Supervisor finalize JSON itinerary
+  → optional persist to Supabase
+  → Dashboard / Itinerary / Flights / Hotels / Budget UI
+```
+
+Schema: `supabase/schema.sql`  
+Env template: `.env.example`
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local
+# add GEMINI_API_KEY (required for live agents)
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Minimum for live agents
+
+```
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.6-flash
+```
+
+(or any model your key supports). Tools run in TypeScript; Gemini only ranks and writes JSON.
+
+### Supabase (auth + saved trips)
+
+1. Create a project and paste `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. Optional: `SUPABASE_SERVICE_ROLE_KEY` for API writes.
+3. Run `supabase/schema.sql` in the SQL editor.
+
+If those vars are empty, login is demo-only and trips stay in memory / mock data.
+
+### Later (review)
+
+- `DUFFEL_API_KEY` — live flights  
+- `EXPEDIA_RAPID_*` — hotels  
+- `VIATOR_API_KEY` / `GETYOURGUIDE_API_KEY` — activities  
+- `GOOGLE_MAPS_API_KEY` — transit times and map overlay  
+
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 16 (App Router), React 19, Tailwind CSS 4, Gemini (`@google/generative-ai`), Supabase JS, Recharts.

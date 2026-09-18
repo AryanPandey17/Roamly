@@ -15,6 +15,7 @@ import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
 import { mockTrips } from "@/lib/mockData"
+import { viewTripCards } from "@/lib/trip/view"
 
 const aiActivities = [
   { agent: "Logistics Agent", action: "analyzed 12 flight options for Tokyo trip.", time: "10 mins ago" },
@@ -24,16 +25,25 @@ const aiActivities = [
 ]
 
 export default function DashboardPage() {
-  const { setActivePage, startDemo, user } = useApp()
-  const upcoming = mockTrips.filter((t) => t.status !== "Completed")
-  const recent = mockTrips.filter((t) => t.status === "Completed")
+  const { setActivePage, startDemo, user, trips, logs, supabaseEnabled, providers, setActiveTrip } = useApp()
+  const live = viewTripCards(trips)
+  const catalog = supabaseEnabled ? live : mockTrips
+  const upcoming = catalog.filter((t) => t.status !== "Completed")
+  const recent = catalog.filter((t) => t.status === "Completed")
+  const activity = logs.length
+    ? logs.slice(-4).reverse().map((l) => ({ agent: `${l.agent} Agent`, action: l.message, time: l.timestamp }))
+    : aiActivities
 
   return (
     <AppLayout>
       <PageHeader
         eyebrow="Overview"
         title={`Where do you want to travel next${user?.name ? `, ${user.name.split(" ")[0]}` : ""}?`}
-        description="Your trips, agent activity, and quick actions — all in one place."
+        description={
+          providers.gemini
+            ? "Live Gemini agents are enabled. Plan a trip to watch the negotiation loop."
+            : "Add GEMINI_API_KEY for live agents. Demo Mode still runs the catalog simulation."
+        }
         action={
           <button className="primary-button" onClick={startDemo}>
             <Zap /> Demo Mode
@@ -83,7 +93,11 @@ export default function DashboardPage() {
                 type="button"
                 key={trip.id}
                 className="trip-card-item"
-                onClick={() => setActivePage("itinerary")}
+                onClick={() => {
+                  const full = trips.find((t) => t.id === trip.id)
+                  if (full) setActiveTrip(full)
+                  setActivePage("itinerary")
+                }}
                 style={{ textAlign: "left", width: "100%" }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
@@ -121,7 +135,7 @@ export default function DashboardPage() {
 
         <div className="surface activity-panel">
           <h3><Zap /> AI Activity</h3>
-          {aiActivities.map((act) => (
+              {activity.map((act) => (
             <div className="activity-line" key={act.time + act.agent}>
               <div>
                 <strong>{act.agent}</strong>

@@ -5,12 +5,13 @@ import { Check, Heart, Hotel, Star } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
-import { mockHotels } from "@/lib/mockData"
+import { viewHotels } from "@/lib/trip/view"
 import { formatCurrency } from "@/lib/utils"
 
 export default function AccommodationPage() {
-  const { savedItems, toggleSaveItem } = useApp()
-  const [selected, setSelected] = useState(mockHotels.find((h) => h.selected)?.id ?? "hotel-1")
+  const { savedItems, toggleSaveItem, activeTrip } = useApp()
+  const hotels = viewHotels(activeTrip)
+  const [selected, setSelected] = useState(hotels[0]?.id ?? "hotel-1")
   const [compareOpen, setCompareOpen] = useState(false)
 
   return (
@@ -23,11 +24,11 @@ export default function AccommodationPage() {
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
-        {mockHotels.map((hotel) => (
+        {hotels.map((hotel) => (
           <div className="item-card" key={hotel.id}>
             <div className="item-card-header">
               <div style={{ display: "flex", gap: ".75rem" }}>
-                <span style={{ fontSize: "2.5rem" }}>{hotel.image}</span>
+                <span style={{ fontSize: "2.5rem" }}>{hotel.image || "🏨"}</span>
                 <div>
                   <h3>{hotel.name}</h3>
                   <p style={{ fontSize: ".75rem", color: "#687186", marginTop: ".2rem" }}>{hotel.location}</p>
@@ -38,7 +39,7 @@ export default function AccommodationPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: ".35rem", alignItems: "center" }}>
-                {hotel.badge && <span className="badge ready">{hotel.badge}</span>}
+                {hotel.notes && <span className="badge ready">Proposed</span>}
                 <button className="secondary-button" style={{ padding: ".45rem" }} onClick={() => toggleSaveItem("hotels", hotel.id)}>
                   <Heart style={{ width: ".9rem", fill: savedItems.hotels.includes(hotel.id) ? "#e05f7a" : "none", color: savedItems.hotels.includes(hotel.id) ? "#e05f7a" : undefined }} />
                 </button>
@@ -46,7 +47,7 @@ export default function AccommodationPage() {
             </div>
 
             <div className="chip-grid">
-              {hotel.amenities.map((a) => <span key={a} className="chip">{a}</span>)}
+              {hotel.amenities?.map((a) => <span key={a} className="chip">{a}</span>)}
             </div>
 
             <div className="item-card-footer">
@@ -71,7 +72,7 @@ export default function AccommodationPage() {
           <table className="budget-table">
             <thead><tr><th>Hotel</th><th>Rating</th><th>Night</th><th>Total</th></tr></thead>
             <tbody>
-              {mockHotels.map((h) => (
+              {hotels.map((h) => (
                 <tr key={h.id}><td>{h.name}</td><td>{h.rating}</td><td>{formatCurrency(h.pricePerNight)}</td><td>{formatCurrency(h.totalPrice)}</td></tr>
               ))}
             </tbody>

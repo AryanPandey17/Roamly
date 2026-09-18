@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, CheckCircle, Compass, Mail } from "lucide-react"
 import { useApp } from "@/context/AppContext"
 
 export default function ForgotPasswordPage() {
-  const { setActivePage } = useApp()
+  const { setActivePage, resetPassword, authError } = useApp()
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
 
@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
           <>
             <h2>Reset password</h2>
             <p>We&apos;ll send reset instructions to your email.</p>
-            <form onSubmit={(e) => { e.preventDefault(); if (email) setSent(true) }}>
+            <form onSubmit={async (e) => { e.preventDefault(); if (email && await resetPassword(email)) setSent(true) }}>
               <div className="auth-field">
                 <label htmlFor="email">Email</label>
                 <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />

@@ -1,30 +1,38 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Briefcase, Calendar, Copy, Plus, Search, Trash2, Wallet } from "lucide-react"
+import { Briefcase, Calendar, Plus, Search, Trash2, Wallet } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
 import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
 import { mockTrips } from "@/lib/mockData"
-
-type Trip = (typeof mockTrips)[number]
+import { apiSend } from "@/lib/api"
+import { viewTripCards } from "@/lib/trip/view"
 
 export default function MyTripsPage() {
-  const { setActivePage } = useApp()
-  const [trips, setTrips] = useState<Trip[]>(mockTrips)
+  const { setActivePage, trips, setActiveTrip, accessToken, supabaseEnabled, refreshTrips, activeTrip } = useApp()
+  const live = viewTripCards(trips)
+  const source = supabaseEnabled ? live : mockTrips
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState<"date" | "budget">("date")
-  const [filter, setFilter] = useState<"all" | Trip["status"]>("all")
+  const [filter, setFilter] = useState<"all" | "Ready" | "Draft" | "Completed">("all")
+  const [hidden, setHidden] = useState<string[]>([])
 
   const displayed = useMemo(() => {
-    let list = [...trips]
+    let list = source.filter((t) => !hidden.includes(t.id))
     if (filter !== "all") list = list.filter((t) => t.status === filter)
-    if (search) list = list.filter((t) => t.destination.toLowerCase().includes(search.toLowerCase()) || t.location.toLowerCase().includes(search.toLowerCase()))
-    list.sort((a, b) => sort === "budget" ? b.budget - a.budget : a.dates.localeCompare(b.dates))
+    if (search) {
+      list = list.filter(
+        (t) =>
+          t.destination.toLowerCase().includes(search.toLowerCase()) ||
+          t.location.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+    list.sort((a, b) => (sort === "budget" ? b.budget - a.budget : a.dates.localeCompare(b.dates)))
     return list
-  }, [trips, search, sort, filter])
+  }, [source, search, sort, filter, hidden])
 
-  const badgeClass = (status: Trip["status"]) =>
+  const badgeClass = (status: string) =>
     status === "Ready" ? "ready" : status === "Completed" ? "completed" : status === "Draft" ? "draft" : "progress"
 
   return (
@@ -32,7 +40,7 @@ export default function MyTripsPage() {
       <PageHeader
         eyebrow="Your trips"
         title="My Trips"
-        description="Search, filter, and manage all your planned adventures."
+        description={supabaseEnabled ? "Synced from Supabase when you are signed in." : "Mock trips — configure Supabase to persist real plans."}
         icon={Briefcase}
         action={
           <button className="primary-button" onClick={() => setActivePage("plan-trip")}>
@@ -68,11 +76,28 @@ export default function MyTripsPage() {
               <span><Wallet /> ₹{trip.budget.toLocaleString("en-IN")}</span>
             </div>
             <div style={{ display: "flex", gap: ".35rem", marginTop: ".85rem", flexWrap: "wrap" }}>
-              <button className="primary-button" style={{ flex: 1 }} onClick={() => setActivePage("itinerary")}>View itinerary</button>
-              <button className="secondary-button" title="Duplicate" onClick={() => setTrips((prev) => [...prev, { ...trip, id: `${trip.id}-copy`, destination: `${trip.destination} (Copy)`, status: "Draft" }])}>
-                <Copy />
+              <button
+                className="primary-button"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  const full = trips.find((t) => t.id === trip.id) || activeTrip
+                  if (full) setActiveTrip(full)
+                  setActivePage("itinerary")
+                }}
+              >
+                View itinerary
               </button>
-              <button className="secondary-button" title="Delete" onClick={() => setTrips((prev) => prev.filter((t) => t.id !== trip.id))}>
+              <button
+                className="secondary-button"
+                title="Delete"
+                onClick={async () => {
+                  setHidden((prev) => [...prev, trip.id])
+                  if (supabaseEnabled && accessToken) {
+                    await apiSend(`/api/trips/${trip.id}`, accessToken, "DELETE")
+                    await refreshTrips()
+                  }
+                }}
+              >
                 <Trash2 />
               </button>
             </div>
@@ -83,7 +108,7 @@ export default function MyTripsPage() {
       {displayed.length === 0 && (
         <div className="surface panel-pad" style={{ textAlign: "center" }}>
           <Search style={{ width: "2rem", color: "#8892a4", margin: "0 auto .75rem" }} />
-          <p style={{ color: "#687186" }}>No trips match your search.</p>
+          <p style={{ color: "#687186" }}>No trips yet. Plan one or run demo mode.</p>
         </div>
       )}
     </AppLayout>

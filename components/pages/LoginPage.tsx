@@ -1,23 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, Compass, Lock, Mail } from "lucide-react"
+import { ArrowRight, Compass, Mail } from "lucide-react"
 import { useApp } from "@/context/AppContext"
 
 export default function LoginPage() {
-  const { setActivePage, setUser } = useApp()
+  const { setActivePage, signIn, signInWithGoogle, authError, supabaseEnabled } = useApp()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
       setError("Please fill in all fields.")
       return
     }
-    setUser({ name: email.split("@")[0], email, avatar: "" })
-    setActivePage("dashboard")
+    const ok = await signIn(email, password)
+    if (!ok) setError(authError || "Could not log in.")
   }
 
   return (
@@ -30,7 +30,7 @@ export default function LoginPage() {
         <h2>Welcome back</h2>
         <p>Log in to continue planning your trips.</p>
 
-        {error && <div className="auth-error">{error}</div>}
+        {(error || authError) && <div className="auth-error">{error || authError}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="auth-field">
@@ -55,7 +55,7 @@ export default function LoginPage() {
         </form>
 
         <div className="auth-divider">or</div>
-        <button type="button" className="google-btn">
+        <button type="button" className="google-btn" onClick={() => void signInWithGoogle()}>
           <Mail /> Continue with Google
         </button>
 
@@ -64,7 +64,7 @@ export default function LoginPage() {
           <button className="text-button" style={{ padding: 0 }} onClick={() => setActivePage("signup")}>Sign up</button>
         </p>
         <p style={{ textAlign: "center", marginTop: ".75rem", fontSize: ".72rem", color: "#8892a4" }}>
-          Demo: use any email and password
+          {supabaseEnabled ? "Uses your Supabase project for accounts." : "Supabase is not configured — demo login accepts any email and password."}
         </p>
       </div>
     </div>

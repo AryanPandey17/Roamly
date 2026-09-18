@@ -1,47 +1,49 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Calendar,
-  CheckCircle,
-  Download,
-  MapPin,
-  Share2,
-  Wallet,
-} from "lucide-react"
+import { Calendar, CheckCircle, Download, MapPin, Share2, Wallet } from "lucide-react"
 import AppLayout from "@/components/AppLayout"
-import PageHeader from "@/components/PageHeader"
 import { useApp } from "@/context/AppContext"
-import {
-  mockBudgetBreakdown,
-  mockBudgetRemaining,
-  mockBudgetTotal,
-  mockDayPlans,
-  mockMapPins,
-} from "@/lib/mockData"
+import { mockMapPins } from "@/lib/mockData"
+import { viewBudget, viewDays } from "@/lib/trip/view"
 import { formatCurrency } from "@/lib/utils"
 
 export default function ItineraryPage() {
-  const { requirements, setActivePage } = useApp()
+  const { requirements, setActivePage, activeTrip, providers } = useApp()
   const [activeDay, setActiveDay] = useState(1)
   const [mapView, setMapView] = useState<"full" | number>("full")
-  const day = mockDayPlans.find((d) => d.day === activeDay) ?? mockDayPlans[0]
+  const days = viewDays(activeTrip)
+  const budget = viewBudget(activeTrip)
+  const day = days.find((d) => d.day === activeDay) ?? days[0]
+  const itinerary = activeTrip?.finalItinerary
+  const title = itinerary ? `Your optimized ${itinerary.destination} adventure` : "Your Optimized Tokyo Adventure"
+  const currency = itinerary?.currency || requirements.currency || "INR"
 
   return (
     <AppLayout maxWidth="max-w-6xl">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Optimized itinerary</p>
-          <h1>Your Optimized Tokyo Adventure</h1>
+          <h1>{title}</h1>
           <p>
-            {requirements.from} → {requirements.to} · 5 days · {requirements.travelers} travelers ·{" "}
-            Budget {formatCurrency(requirements.budget)} · <strong style={{ color: "#149d87" }}>AI Optimized</strong>
+            {itinerary ? `${itinerary.dates.start} → ${itinerary.dates.end}` : `${requirements.from} → ${requirements.to}`}
+            {" · "}
+            {activeTrip?.travelerCount ?? requirements.travelers} travelers · Budget{" "}
+            {formatCurrency(itinerary?.budgetTotal ?? requirements.budget, currency)}
+            {" · "}
+            <strong style={{ color: "#149d87" }}>{itinerary?.notes?.includes("Compromise") ? "Compromise plan" : "AI Optimized"}</strong>
           </p>
+          {itinerary?.assumptions?.length ? (
+            <p style={{ fontSize: ".78rem", marginTop: ".35rem" }}>Assumptions: {itinerary.assumptions.join(" · ")}</p>
+          ) : null}
+          {!providers.gemini && (
+            <p style={{ fontSize: ".75rem", color: "#a46a18", marginTop: ".35rem" }}>Showing catalog/demo data until GEMINI_API_KEY is set.</p>
+          )}
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           <button className="secondary-button"><Share2 /> Share</button>
           <button className="secondary-button"><Download /> Export</button>
-          <button className="primary-button" onClick={() => alert("Trip booked! (Demo)")}>
+          <button className="primary-button" onClick={() => alert("Trip booked! (Prototype)")}>
             <CheckCircle /> Book Trip
           </button>
         </div>
@@ -49,25 +51,17 @@ export default function ItineraryPage() {
 
       <div className="content-grid">
         <div>
-          {/* Summary cards */}
           <div className="content-grid-wide" style={{ marginBottom: "1.25rem" }}>
-            {[
-              { label: "Flights", value: "₹48,000", emoji: "✈️" },
-              { label: "Hotel", value: "₹34,000", emoji: "🏨" },
-              { label: "Food", value: "₹25,000", emoji: "🍜" },
-              { label: "Activities", value: "₹20,000", emoji: "🎯" },
-            ].map((item) => (
-              <div className="surface panel-pad" key={item.label} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem" }}>{item.emoji}</div>
-                <p style={{ fontSize: ".72rem", color: "#687186", marginTop: ".35rem" }}>{item.label}</p>
-                <strong style={{ fontSize: ".95rem", color: "#172033" }}>{item.value}</strong>
+            {budget.rows.map((item) => (
+              <div className="surface panel-pad" key={item.category} style={{ textAlign: "center" }}>
+                <p style={{ fontSize: ".72rem", color: "#687186" }}>{item.category}</p>
+                <strong style={{ fontSize: ".95rem", color: "#172033" }}>{formatCurrency(item.amount, currency)}</strong>
               </div>
             ))}
           </div>
 
-          {/* Day tabs */}
           <div className="day-tabs">
-            {mockDayPlans.map((d) => (
+            {days.map((d) => (
               <button
                 key={d.day}
                 type="button"
@@ -85,6 +79,7 @@ export default function ItineraryPage() {
                 Day {day.day}: {day.theme}
               </h3>
             </div>
+            {day.events.length === 0 && <p style={{ color: "#687186", fontSize: ".85rem" }}>Transit and check-in only.</p>}
             {day.events.map((event) => (
               <div className="timeline-item" key={event.time + event.title}>
                 <div className="timeline-time">{event.time}</div>
@@ -101,17 +96,16 @@ export default function ItineraryPage() {
             ))}
           </div>
 
-          {/* Quick links */}
           <div style={{ display: "flex", gap: ".5rem", marginTop: "1rem", flexWrap: "wrap" }}>
             <button className="secondary-button" onClick={() => setActivePage("flights")}>View flights</button>
             <button className="secondary-button" onClick={() => setActivePage("accommodation")}>View hotels</button>
             <button className="secondary-button" onClick={() => setActivePage("local-recs")}>Local recs</button>
             <button className="secondary-button" onClick={() => setActivePage("budget-insights")}>Budget</button>
+            <button className="secondary-button" onClick={() => setActivePage("negotiations")}>Negotiation log</button>
           </div>
         </div>
 
         <div>
-          {/* Budget summary */}
           <div className="surface panel-pad" style={{ marginBottom: "1rem" }}>
             <p className="section-title">Trip budget</p>
             <table className="budget-table">
@@ -119,34 +113,33 @@ export default function ItineraryPage() {
                 <tr><th>Category</th><th>Cost</th></tr>
               </thead>
               <tbody>
-                {mockBudgetBreakdown.map((row) => (
+                {budget.rows.map((row) => (
                   <tr key={row.category}>
                     <td>{row.category}</td>
-                    <td>{formatCurrency(row.amount)}</td>
+                    <td>{formatCurrency(row.amount, currency)}</td>
                   </tr>
                 ))}
                 <tr className="total">
                   <td>Total</td>
-                  <td>{formatCurrency(mockBudgetTotal)}</td>
+                  <td>{formatCurrency(budget.spent, currency)}</td>
                 </tr>
                 <tr className="remain">
                   <td>Remaining</td>
-                  <td>{formatCurrency(mockBudgetRemaining)}</td>
+                  <td>{formatCurrency(budget.remaining, currency)}</td>
                 </tr>
               </tbody>
             </table>
             <div className="health-banner">
-              <strong>Excellent budget health</strong>
-              <p>Your trip is currently {formatCurrency(mockBudgetRemaining)} under budget.</p>
+              <strong>Budget health: {budget.health}</strong>
+              <p>{itinerary?.notes || `Your trip is currently ${formatCurrency(budget.remaining, currency)} relative to budget.`}</p>
             </div>
           </div>
 
-          {/* Map */}
           <div className="surface panel-pad">
             <p className="section-title">Trip map</p>
             <div className="tab-bar" style={{ marginBottom: ".75rem" }}>
               <button type="button" className={`tab-btn ${mapView === "full" ? "is-active" : ""}`} onClick={() => setMapView("full")}>Full trip</button>
-              {mockDayPlans.map((d) => (
+              {days.map((d) => (
                 <button key={d.day} type="button" className={`tab-btn ${mapView === d.day ? "is-active" : ""}`} onClick={() => setMapView(d.day)}>Day {d.day}</button>
               ))}
             </div>
@@ -162,7 +155,7 @@ export default function ItineraryPage() {
               ))}
             </div>
             <p style={{ fontSize: ".72rem", color: "#8892a4", marginTop: ".65rem", textAlign: "center" }}>
-              Map placeholder — connect Google Maps API for live routes
+              {providers.maps ? "Google Maps key detected — live overlays can be enabled next." : "Map placeholder — add GOOGLE_MAPS_API_KEY to enable live routes."}
             </p>
           </div>
         </div>
