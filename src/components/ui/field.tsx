@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 const controlClass =
-  "h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground placeholder:text-muted";
+  "h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground placeholder:text-muted/70 " +
+  "transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25";
 
 export function Field({
   label,

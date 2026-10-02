@@ -1,66 +1,220 @@
 @import "tailwindcss";
+@import "@fontsource-variable/fraunces";
 
 /* Design tokens. Components use these names only, never raw colours.
-   Dark values follow the system setting for now; the manual theme toggle
-   arrives with the Phase 6 UI pass. */
+   The resolved theme is set on <html data-theme> before first paint
+   (see components/theme.tsx), so there is no flash of the wrong theme. */
 :root {
-  --background: #f8f9fb;
+  --background: #faf8f4;
   --surface: #ffffff;
-  --foreground: #161b26;
-  --muted: #5f6b7d;
-  --border: #dfe3ea;
-  --primary: #3d4fd6;
+  --surface-2: #f3efe8;
+  --foreground: #1c1b19;
+  --muted: #6a655d;
+  --border: #e6e0d5;
+  --primary: #17594a;
   --primary-foreground: #ffffff;
-  --danger: #c0362c;
-  --success: #1c7c54;
-  --radius: 0.625rem;
+  --accent: #d94f25;
+  --danger: #b93a2b;
+  --success: #1d7a55;
+  --warning: #9a5f08;
+  --radius: 0.75rem;
+  --shadow: 0 1px 2px rgb(28 27 25 / 0.04), 0 8px 24px -12px rgb(28 27 25 / 0.12);
 
   /* One fixed colour per agent, so the feed can be read at a glance. */
-  --agent-supervisor: #6d5bd0;
-  --agent-logistics: #2f7fd1;
-  --agent-recommendations: #c2578a;
-  --agent-budget: #b7791f;
+  --agent-supervisor: #6352c7;
+  --agent-logistics: #2470bd;
+  --agent-recommendations: #bb4680;
+  --agent-budget: #a96b0c;
 }
 
+:root[data-theme="dark"] {
+  --background: #111210;
+  --surface: #1a1c19;
+  --surface-2: #232622;
+  --foreground: #ecebe6;
+  --muted: #a39e95;
+  --border: #30332e;
+  --primary: #62c9ad;
+  --primary-foreground: #0c1a16;
+  --accent: #ff8257;
+  --danger: #ff8d7d;
+  --success: #6bd6a5;
+  --warning: #f0b65a;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+
+  --agent-supervisor: #a99ef5;
+  --agent-logistics: #77b6f2;
+  --agent-recommendations: #f191bd;
+  --agent-budget: #f0b65a;
+}
+
+/* Without JavaScript, follow the system setting. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f1218;
-    --surface: #181c25;
-    --foreground: #e8ebf1;
-    --muted: #98a2b3;
-    --border: #2a303c;
-    --primary: #8090ff;
-    --primary-foreground: #0f1218;
-    --danger: #ff8a80;
-    --success: #5fd3a3;
+  :root:not([data-theme]) {
+    --background: #111210;
+    --surface: #1a1c19;
+    --surface-2: #232622;
+    --foreground: #ecebe6;
+    --muted: #a39e95;
+    --border: #30332e;
+    --primary: #62c9ad;
+    --primary-foreground: #0c1a16;
+    --accent: #ff8257;
+    --danger: #ff8d7d;
+    --success: #6bd6a5;
+    --warning: #f0b65a;
+    --agent-supervisor: #a99ef5;
+    --agent-logistics: #77b6f2;
+    --agent-recommendations: #f191bd;
+    --agent-budget: #f0b65a;
   }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-agent-supervisor: var(--agent-supervisor);
   --color-agent-logistics: var(--agent-logistics);
   --color-agent-recommendations: var(--agent-recommendations);
   --color-agent-budget: var(--agent-budget);
   --radius-md: var(--radius);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --radius-lg: calc(var(--radius) + 0.375rem);
+  --shadow-card: var(--shadow);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  text-rendering: optimizeLegibility;
 }
 
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet: match the map chrome to the theme. */
+.leaflet-container {
+  background: var(--surface-2);
+  font-family: inherit;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--shadow);
+}
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 85%, transparent) !important;
+  color: var(--muted) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--muted) !important;
+}
+html[data-theme="dark"] .leaflet-tile-pane {
+  filter: brightness(0.75) contrast(1.1) saturate(0.8);
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}
+
+/* Map pins and day routes (Leaflet draws these outside React, so they are styled here). */
+.roamly-pin {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 2px solid var(--surface);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font: 600 12px/1 var(--font-geist-sans), sans-serif;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s ease;
+}
+.roamly-pin[data-type="stay"] {
+  background: var(--agent-recommendations);
+  color: #fff;
+}
+.roamly-pin[data-type="flight"] {
+  background: var(--agent-logistics);
+  color: #fff;
+}
+.roamly-pin[data-active="true"] {
+  transform: scale(1.3);
+  background: var(--accent);
+  color: #fff;
+}
+.roamly-route {
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-opacity: 0.7;
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+  fill: none;
 }
