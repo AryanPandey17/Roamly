@@ -32,6 +32,7 @@ for (const [role, tiers] of Object.entries(registry.roles)) {
 }
 
 let failures = 0;
+let busy = 0;
 let checked = 0;
 for (const target of targets.values()) {
   const provider = registry.providers[target.provider];
@@ -69,9 +70,16 @@ for (const target of targets.values()) {
       console.log(`WARN  ${label}  answered without a valid tool call (${ms} ms)`);
     }
   } catch (error) {
-    failures += 1;
     const e = error as { status?: number; message?: string };
-    console.log(`FAIL  ${label}  ${e.status ?? ""} ${String(e.message ?? error).slice(0, 140)}`);
+    if (e.status === 429) {
+      // The model exists but its free capacity is rate-limited right now.
+      // The app falls through to the next model when this happens.
+      busy += 1;
+      console.log(`BUSY  ${label}  rate-limited right now (429); kept as a fallback`);
+    } else {
+      failures += 1;
+      console.log(`FAIL  ${label}  ${e.status ?? ""} ${String(e.message ?? error).split("\n")[0].slice(0, 140)}`);
+    }
   }
 }
 
@@ -80,5 +88,6 @@ console.log(
     ? "\nNothing was checked: no API keys are set in .env."
     : failures
       ? `\n${failures} of ${checked} model(s) need attention. Remove or replace them in config/models.json.`
-      : `\nAll ${checked} checked model(s) answered with a tool call.`
+      : `\nNo broken models. ${checked - busy} of ${checked} answered with a tool call${busy ? `, ${busy} busy` : ""}.`
 );
+if (busy && failures) console.log(`${busy} more are only busy (429) and can stay.`);
