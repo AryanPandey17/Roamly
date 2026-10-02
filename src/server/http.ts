@@ -18,6 +18,14 @@ export class ApiError extends Error {
 export const unauthorized = () => new ApiError(401, "unauthorized", "Sign in to continue.");
 export const notFound = (what = "Resource") => new ApiError(404, "not_found", `${what} not found.`);
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Route ids are UUIDs. Anything else is a 404, not a database error. */
+export function requireUuid(value: string, what = "Resource") {
+  if (!UUID.test(value)) throw notFound(what);
+  return value;
+}
+
 /** Parse and validate a JSON body. Throws a 400 with field errors on failure. */
 export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<z.infer<S>> {
   let raw: unknown;
