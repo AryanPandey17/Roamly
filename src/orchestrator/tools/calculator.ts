@@ -59,7 +59,9 @@ export function calculateTripCost(input: CostInput): CostBreakdown {
 
 /** Cheapest way to keep the same number of activities, from known candidates. */
 export function cheapestActivities(candidates: PlaceOption[], count: number): PlaceOption[] {
-  return [...candidates].sort((a, b) => a.price - b.price).slice(0, count);
+  // Places whose price is unknown count as 0 in totals, so they must not look "cheapest".
+  const cost = (p: PlaceOption) => (p.priceKnown ? p.price : Number.MAX_SAFE_INTEGER);
+  return [...candidates].sort((a, b) => cost(a) - cost(b)).slice(0, count);
 }
 
 export type Alternatives = {

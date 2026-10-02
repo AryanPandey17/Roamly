@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LOGISTICS, LOGISTICS_REVISE } from "../prompts";
 import type { FlightOption, TripStateType, TripStateUpdate } from "../state";
 import { formatMoney } from "../tools/calculator";
-import { callProvider, logisticsTools, searchFlights, type ToolContext } from "../tools";
+import { logisticsTools, searchFlights, travelMinutes, type ToolContext } from "../tools";
 import { decide, type AgentContext } from "./runner";
 import { mergeById, requestOf, selectedFlight } from "./select";
 
@@ -31,6 +31,7 @@ function toolContext(state: TripStateType, ctx: AgentContext): ToolContext {
     request: requestOf(state),
     providers: ctx.deps.providers,
     telemetry: ctx.deps.telemetry,
+    cache: ctx.deps.cache,
     meta: ctx.meta,
     meter: ctx.meter,
   };
@@ -39,9 +40,7 @@ function toolContext(state: TripStateType, ctx: AgentContext): ToolContext {
 async function transferMinutes(state: TripStateType, ctx: AgentContext, flight: FlightOption) {
   if (!flight.arrivalAirport) return null;
   const tc = toolContext(state, ctx);
-  return callProvider(tc, "estimate_travel_time", ctx.deps.providers.routing.name, () =>
-    ctx.deps.providers.routing.travelMinutes(flight.arrivalAirport!, tc.request.destination)
-  );
+  return travelMinutes(tc, flight.arrivalAirport, tc.request.destination);
 }
 
 /** Round 0: propose the most convenient flight, ignoring cost. */

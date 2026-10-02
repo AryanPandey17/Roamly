@@ -8,7 +8,7 @@ import {
   chooseInstruction,
   formatMoney,
 } from "../tools/calculator";
-import { callProvider } from "../tools";
+import { estimateDailyCosts } from "./estimates";
 import { narrate, type AgentContext } from "./runner";
 import { requestOf, selectedActivities, selectedFlight, selectedHotel } from "./select";
 
@@ -16,16 +16,7 @@ const LABEL: Record<Category, string> = { flights: "Flights", stay: "Stay", acti
 
 async function ensureEstimates(state: TripStateType, ctx: AgentContext): Promise<Estimates> {
   if (state.estimates) return state.estimates;
-  const request = requestOf(state);
-  return callProvider(
-    { telemetry: ctx.deps.telemetry, meta: ctx.meta, meter: ctx.meter },
-    "estimate_daily_costs", ctx.deps.providers.costOfLiving.name, () =>
-    ctx.deps.providers.costOfLiving.dailyEstimates({
-      destination: request.destination,
-      currency: request.budget.currency,
-      style: state.preferences.budgetStyle,
-    })
-  );
+  return estimateDailyCosts(ctx, requestOf(state), state.preferences);
 }
 
 /**

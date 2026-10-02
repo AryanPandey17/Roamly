@@ -12,6 +12,7 @@ import type {
   TripStateType,
   TripStateUpdate,
 } from "../state";
+import { CACHE_TTL } from "../config";
 import { calculateTripCost, formatMoney } from "../tools/calculator";
 import { callProvider } from "../tools";
 import { decide, type AgentContext } from "./runner";
@@ -127,9 +128,15 @@ export async function parseRequest(state: TripStateType, ctx: AgentContext): Pro
     hints.interests?.length ? hints.interests : parsed.interests?.length ? parsed.interests.slice(0, 8) : prefs.interests;
 
   // Real coordinates for both ends, so nothing downstream guesses a location.
-  const callCtx = { telemetry: ctx.deps.telemetry, meta: ctx.meta, meter: ctx.meter };
+  const callCtx = { telemetry: ctx.deps.telemetry, cache: ctx.deps.cache, meta: ctx.meta, meter: ctx.meter };
   const geocode = (query: string): Promise<Place | null> =>
-    callProvider(callCtx, "geocode_place", ctx.deps.providers.geocoding.name, () => ctx.deps.providers.geocoding.geocode(query));
+    callProvider(
+      callCtx,
+      "geocode_place",
+      ctx.deps.providers.geocoding.name,
+      () => ctx.deps.providers.geocoding.geocode(query),
+      { input: { query: query.toLowerCase().trim() }, ttlSeconds: CACHE_TTL.geocode }
+    );
 
   const [destination, origin] = await Promise.all([geocode(destinationName), geocode(originName)]);
   if (!destination) {
@@ -235,6 +242,11 @@ function distribute(activities: PlaceOption[], allowedDays: number[]): Schedule 
   return { titles: new Map(), slots };
 }
 
+const weatherLine = (w: { tempMax: number; tempMin: number; rainChance: number | null } | undefined) =>
+  w
+    ? `${Math.round(w.tempMax)}° / ${Math.round(w.tempMin)}°${w.rainChance !== null ? `, ${Math.round(w.rainChance)}% chance of rain` : ""}`
+    : null;
+
 export async function finalize(state: TripStateType, ctx: AgentContext): Promise<TripStateUpdate> {
   const request = requestOf(state);
   const flight = selectedFlight(state);
@@ -338,6 +350,8 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
         startTime: clock(flight.departAt),
         endTime: clock(flight.arriveAt),
         cost: flight.price,
+        isEstimate: false,
+        sourceUrl: null,
         lat: flight.arrivalAirport?.lat ?? null,
         lng: flight.arrivalAirport?.lng ?? null,
         provider: flight.provider,
@@ -352,6 +366,8 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
           startTime: clock(flight.arriveAt),
           endTime: plusMinutes(clock(flight.arriveAt), state.flights.transferMinutes),
           cost: 0,
+          isEstimate: false,
+          sourceUrl: null,
           lat: null,
           lng: null,
           provider: null,
@@ -366,6 +382,8 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
         startTime: null,
         endTime: null,
         cost: hotel.totalPrice,
+        isEstimate: false,
+        sourceUrl: null,
         lat: hotel.lat,
         lng: hotel.lng,
         provider: hotel.provider,
@@ -379,10 +397,12 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
       items.push({
         type: "activity",
         title: place.name,
-        description: place.description,
+        description: place.priceKnown ? place.description : `${place.description} Entry price not found; not included in the total.`,
         startTime,
         endTime: plusMinutes(startTime, place.durationMinutes),
         cost: Math.round(place.price * request.travellers * 100) / 100,
+        isEstimate: place.priceIsEstimate,
+        sourceUrl: place.sourceUrl,
         lat: place.lat,
         lng: place.lng,
         provider: place.provider,
@@ -391,28 +411,36 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
       });
     }
 
-    items.push({
-      type: "meal",
-      title: "Food and local transport (estimate)",
-      description: `Daily estimate for ${request.travellers} traveller${request.travellers > 1 ? "s" : ""}.`,
-      startTime: null,
-      endTime: null,
-      cost: Math.round(dailyEstimate * 100) / 100,
-      lat: null,
-      lng: null,
-      provider: estimates.source,
-      externalId: null,
-      deepLink: null,
-    });
+    if (estimates.available) {
+      items.push({
+        type: "meal",
+        title: "Food and local transport",
+        description: `Daily estimate for ${request.travellers} traveller${request.travellers > 1 ? "s" : ""}.`,
+        startTime: null,
+        endTime: null,
+        cost: Math.round(dailyEstimate * 100) / 100,
+        isEstimate: true,
+        sourceUrl: estimates.sourceUrl,
+        lat: null,
+        lng: null,
+        provider: estimates.source,
+        externalId: null,
+        deepLink: estimates.sourceUrl,
+      });
+    }
 
-    if (dayNumber === lastDay && flight.returnDepartAt) {
+    if (dayNumber === lastDay) {
       items.push({
         type: "flight",
         title: `Return flight to ${flight.origin}`,
-        description: "Included in the round-trip price.",
-        startTime: clock(flight.returnDepartAt),
+        description: flight.returnDepartAt
+          ? "Included in the round-trip price."
+          : "Included in the round-trip price. Choose the return time on the booking page.",
+        startTime: flight.returnDepartAt ? clock(flight.returnDepartAt) : null,
         endTime: null,
         cost: 0,
+        isEstimate: false,
+        sourceUrl: null,
         lat: flight.arrivalAirport?.lat ?? null,
         lng: flight.arrivalAirport?.lng ?? null,
         provider: flight.provider,
@@ -427,6 +455,7 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
       dayNumber,
       date: addDays(request.startDate, dayNumber - 1),
       title: schedule.titles.get(dayNumber) ?? defaultTitle,
+      weather: weatherLine(state.weather.find((w) => w.date === addDays(request.startDate, dayNumber - 1))),
       items,
     });
   }
@@ -458,16 +487,23 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
     ...days.flatMap((day) => [
       `## Day ${day.dayNumber} · ${day.date} · ${day.title}`,
       "",
+      ...(day.weather ? [`_Forecast: ${day.weather}_`, ""] : []),
       ...day.items.map((item) => {
         const time = item.startTime ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""} ` : "";
-        const cost = item.cost > 0 ? ` (${money(item.cost)})` : "";
+        const cost = item.cost > 0 ? ` (${item.isEstimate ? "est. " : ""}${money(item.cost)})` : "";
         const title = item.deepLink ? `[${item.title}](${item.deepLink})` : item.title;
         return `- ${time}${title}${cost}`;
       }),
       "",
     ]),
-    ...(state.assumptions.length ? ["## Assumptions", "", ...state.assumptions.map((a) => `- ${a}`), ""] : []),
   ].join("\n");
+
+  const assumptions = [
+    ...state.assumptions,
+    ...(estimates.available
+      ? ["Food and local transport are estimates from a web source, not quoted prices."]
+      : ["Daily food and local transport costs could not be estimated and are not included in the total."]),
+  ];
 
   const itinerary: Itinerary = {
     destination: request.destination.name,
@@ -480,9 +516,9 @@ export async function finalize(state: TripStateType, ctx: AgentContext): Promise
     fitsBudget,
     overBy,
     days,
-    assumptions: state.assumptions,
+    assumptions,
     summary,
-    markdown,
+    markdown: [markdown, "## Notes", "", ...assumptions.map((a) => `- ${a}`), ""].join("\n"),
   };
 
   ctx.emit({

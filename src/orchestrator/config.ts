@@ -14,9 +14,23 @@ export const LIMITS = {
   /** Tool-calling turns an agent may take inside one node. */
   maxToolTurns: 3,
   /** Candidates kept in state per category. */
-  maxCandidates: 6,
+  maxCandidates: 8,
   llmTimeoutMs: 60_000,
   toolTimeoutMs: 15_000,
+} as const;
+
+/** How long each kind of tool result may be reused, in seconds. */
+export const CACHE_TTL = {
+  flights: 6 * 3600,
+  hotels: 6 * 3600,
+  places: 7 * 86_400,
+  activityPrices: 30 * 86_400,
+  dailyCosts: 30 * 86_400,
+  geocode: 90 * 86_400,
+  routing: 30 * 86_400,
+  weather: 3 * 3600,
+  fx: 12 * 3600,
+  webSearch: 7 * 86_400,
 } as const;
 
 /** Assumptions used when the request leaves something out. */

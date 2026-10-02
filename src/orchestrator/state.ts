@@ -54,17 +54,32 @@ export const placeOptionSchema = z.object({
   rating: z.number().nullable(),
   lat: z.number().nullable(),
   lng: z.number().nullable(),
-  /** Per person. 0 means free. */
+  /** Per person. 0 means free, or unknown when priceKnown is false. */
   price: z.number().nonnegative(),
   currency: z.string(),
+  /** False when no price could be found; the place is then counted as 0 and flagged. */
+  priceKnown: z.boolean(),
+  /** True when the price is a web-sourced estimate rather than a quoted price. */
+  priceIsEstimate: z.boolean(),
+  /** Where an estimated price came from. */
+  sourceUrl: z.string().nullable(),
   durationMinutes: z.number(),
   description: z.string(),
   deepLink: z.string().nullable(),
 });
 
+export const dailyWeatherSchema = z.object({
+  date: z.string(),
+  tempMax: z.number(),
+  tempMin: z.number(),
+  /** Chance of rain, 0–100, when the provider gives one. */
+  rainChance: z.number().nullable(),
+});
+
 export type FlightOption = z.infer<typeof flightOptionSchema>;
 export type HotelOption = z.infer<typeof hotelOptionSchema>;
 export type PlaceOption = z.infer<typeof placeOptionSchema>;
+export type DailyWeather = z.infer<typeof dailyWeatherSchema>;
 
 // ---------------------------------------------------------------------------
 // Request
@@ -140,7 +155,11 @@ export const estimatesSchema = z.object({
   foodPerDay: z.number().nonnegative(),
   localTransportPerDay: z.number().nonnegative(),
   currency: z.string(),
+  /** Short label of where the figures came from. */
   source: z.string(),
+  sourceUrl: z.string().nullable(),
+  /** False when no estimate could be made; both figures are then 0 and the itinerary says so. */
+  available: z.boolean(),
 });
 
 /** The typed constraint Budget hands to another agent. */
@@ -180,6 +199,9 @@ export const itineraryItemSchema = z.object({
   endTime: z.string().nullable(),
   /** Cost of this line for the whole party, in the trip currency. */
   cost: z.number(),
+  /** True when the cost is an estimate, not a quoted price. */
+  isEstimate: z.boolean(),
+  sourceUrl: z.string().nullable(),
   lat: z.number().nullable(),
   lng: z.number().nullable(),
   provider: z.string().nullable(),
@@ -191,6 +213,8 @@ export const itineraryDaySchema = z.object({
   dayNumber: z.number().int().min(1),
   date: isoDate,
   title: z.string(),
+  /** Forecast for the day, when one is available. */
+  weather: z.string().nullable(),
   items: z.array(itineraryItemSchema),
 });
 
@@ -263,6 +287,9 @@ export const TripState = new StateSchema({
     .default({ candidates: [], selectedIds: [], notes: "" }),
 
   estimates: estimatesSchema.nullable().default(null),
+
+  /** Daily forecast for the trip dates. Empty when the dates are beyond the forecast range. */
+  weather: z.array(dailyWeatherSchema).default([]),
 
   budget: z
     .object({

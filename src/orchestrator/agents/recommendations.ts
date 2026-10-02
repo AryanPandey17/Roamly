@@ -3,7 +3,8 @@ import { DEFAULTS } from "../config";
 import { RECOMMENDATIONS, RECOMMENDATIONS_REVISE } from "../prompts";
 import type { HotelOption, PlaceOption, TripStateType, TripStateUpdate } from "../state";
 import { formatMoney } from "../tools/calculator";
-import { recommendationsTools, searchHotels, searchPlaces, type ToolContext } from "../tools";
+import { getWeather, recommendationsTools, searchHotels, searchPlaces, type ToolContext } from "../tools";
+import { priceActivities } from "./estimates";
 import { decide, type AgentContext } from "./runner";
 import { mergeById, requestOf, selectedActivities, selectedHotel } from "./select";
 
@@ -30,6 +31,7 @@ function toolContext(state: TripStateType, ctx: AgentContext): ToolContext {
     request: requestOf(state),
     providers: ctx.deps.providers,
     telemetry: ctx.deps.telemetry,
+    cache: ctx.deps.cache,
     meta: ctx.meta,
     meter: ctx.meter,
   };
@@ -79,6 +81,11 @@ export async function recommendationsPropose(state: TripStateType, ctx: AgentCon
     return { stay: { candidates: [], selectedId: null, notes: "No stays found." } };
   }
 
+  // Entry prices are estimated once for every candidate, so Budget can price any of them later.
+  collected.places = await priceActivities(ctx, request, collected.places);
+  // The forecast is optional context; fetch it if the model did not.
+  const weather = collected.weather ?? (await getWeather(tc).catch(() => []));
+
   let hotel = collected.hotels.find((h) => h.id === decision.value?.hotelId);
   if (!hotel) {
     if (decision.value) fallback = `the model picked an unknown hotel id "${decision.value.hotelId}"`;
@@ -101,6 +108,8 @@ export async function recommendationsPropose(state: TripStateType, ctx: AgentCon
     (!fallback && decision.value?.reasoning) ||
     `Picked the best-rated stay and ${activities.length} activities matching ${request.interests.join(", ") || "general interests"}.`;
 
+  const unpriced = activities.filter((a) => !a.priceKnown).map((a) => a.name);
+
   ctx.emit({
     agent: "recommendations",
     kind: "proposal",
@@ -108,7 +117,7 @@ export async function recommendationsPropose(state: TripStateType, ctx: AgentCon
     text: reasoning,
     data: {
       option: { type: "stay", title: hotel.name, price: hotel.totalPrice, currency: hotel.currency, facts: hotelFacts(hotel) },
-      activities: activities.map((a) => ({ name: a.name, price: a.price })),
+      activities: activities.map((a) => ({ name: a.name, price: a.price, estimate: a.priceIsEstimate, known: a.priceKnown })),
       ...(fallback ? { fallback } : {}),
       ...(decision.served ? { model: decision.served } : {}),
     },
@@ -117,6 +126,10 @@ export async function recommendationsPropose(state: TripStateType, ctx: AgentCon
   return {
     stay: { candidates: collected.hotels, selectedId: hotel.id, notes: reasoning },
     activities: { candidates: collected.places, selectedIds: activityIds, notes: reasoning },
+    weather,
+    assumptions: unpriced.length
+      ? [`No entry price was found for: ${unpriced.join(", ")}. Their cost is not included in the total.`]
+      : [],
     usage: { ...ctx.meter },
   };
 }
@@ -228,7 +241,8 @@ function affordableSet(candidates: PlaceOption[], count: number, perPersonCeilin
   const chosen: PlaceOption[] = [];
   let spent = 0;
   // Greedy by rating, skipping anything that would break the ceiling.
-  for (const place of bestRated(candidates)) {
+  // Only places with a known price can be claimed to fit a ceiling.
+  for (const place of bestRated(candidates.filter((p) => p.priceKnown))) {
     if (chosen.length >= count) break;
     if (spent + place.price <= perPersonCeiling) {
       chosen.push(place);
@@ -266,7 +280,7 @@ async function reviseActivities(state: TripStateType, ctx: AgentContext): Promis
   }
 
   // Let the model swap within the affordable pool if there is real choice.
-  const pool = state.activities.candidates.filter((p) => p.price <= perPersonCeiling);
+  const pool = state.activities.candidates.filter((p) => p.priceKnown && p.price <= perPersonCeiling);
   let reasoning = "";
   let fallback: string | null = null;
   let served = null;

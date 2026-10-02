@@ -8,7 +8,7 @@ import type { ModelRole } from "./config";
 import type { AgentEventInput, AgentName } from "./events";
 import type {
   BudgetAudit,
-  Estimates,
+  DailyWeather,
   FlightOption,
   HotelOption,
   Itinerary,
@@ -123,23 +123,31 @@ export type PlaceSearch = {
   limit: number;
 };
 
+export type SearchResult = { title: string; snippet: string; url: string };
+
 export interface TravelProviders {
   geocoding: { name: string; geocode(query: string): Promise<Place | null> };
   flights: { name: string; search(query: FlightSearch): Promise<FlightOption[]> };
   hotels: { name: string; search(query: HotelSearch): Promise<HotelOption[]> };
+  /** Places come back without prices for paid attractions; those are estimated separately. */
   places: { name: string; search(query: PlaceSearch): Promise<PlaceOption[]> };
   routing: {
     name: string;
     travelMinutes(from: { lat: number; lng: number }, to: { lat: number; lng: number }): Promise<number>;
   };
-  costOfLiving: {
+  weather: {
     name: string;
-    dailyEstimates(input: {
-      destination: Place;
-      currency: string;
-      style: "saver" | "balanced" | "comfort";
-    }): Promise<Estimates>;
+    /** Empty when the dates are outside the forecast range. */
+    daily(place: { lat: number; lng: number }, startDate: string, endDate: string): Promise<DailyWeather[]>;
   };
+  fx: { name: string; rate(from: string, to: string): Promise<{ rate: number; asOf: string }> };
+  search: { name: string; search(query: string): Promise<SearchResult[]> };
+}
+
+/** Key-value cache for tool results, to protect free quotas. */
+export interface CachePort {
+  get(key: string): Promise<unknown | null>;
+  set(key: string, tool: string, value: unknown, ttlSeconds: number): Promise<void>;
 }
 
 // ----- Everything a run needs ----------------------------------------------
@@ -149,6 +157,7 @@ export interface Deps {
   store: RunStore;
   telemetry: TelemetryPort;
   providers: TravelProviders;
+  cache: CachePort;
   checkpointer: BaseCheckpointSaver;
   /** Injected so "today" is testable and consistent within a run. */
   now(): Date;
