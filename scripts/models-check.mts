@@ -32,6 +32,7 @@ for (const [role, tiers] of Object.entries(registry.roles)) {
 }
 
 let failures = 0;
+let checked = 0;
 for (const target of targets.values()) {
   const provider = registry.providers[target.provider];
   const apiKey = process.env[provider.apiKeyEnv];
@@ -55,6 +56,7 @@ for (const target of targets.values()) {
     useResponsesApi: false,
   }).bindTools([ping]);
 
+  checked += 1;
   const started = Date.now();
   try {
     const reply = await model.invoke([new HumanMessage("Use the lookup_city tool to look up Tokyo.")]);
@@ -74,7 +76,9 @@ for (const target of targets.values()) {
 }
 
 console.log(
-  failures
-    ? `\n${failures} model(s) need attention. Remove or replace them in config/models.json.`
-    : "\nAll configured models answered with a tool call."
+  checked === 0
+    ? "\nNothing was checked: no API keys are set in .env."
+    : failures
+      ? `\n${failures} of ${checked} model(s) need attention. Remove or replace them in config/models.json.`
+      : `\nAll ${checked} checked model(s) answered with a tool call.`
 );

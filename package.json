@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:types": "node --env-file=.env scripts/db-types.mjs",
-    "models:check": "tsx --env-file=.env scripts/models-check.ts"
+    "models:check": "tsx --env-file=.env scripts/models-check.mts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.14",
