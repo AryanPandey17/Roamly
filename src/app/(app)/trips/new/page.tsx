@@ -1,20 +1,23 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
+import { getPreferences } from "@/server/account";
+import { requireUser } from "@/server/auth";
+import { NewTripForm } from "./new-trip-form";
 
 export const metadata: Metadata = { title: "New trip" };
 
-// The prompt form and the live negotiation view are built in Phase 4, once
-// the orchestrator exists. This page keeps the route and navigation real.
-export default function NewTripPage() {
+export default async function NewTripPage() {
+  const user = await requireUser();
+  const preferences = await getPreferences(user.id);
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Plan a trip</h1>
-      <Card className="space-y-2">
-        <p className="font-medium">Planning is not wired up yet</p>
-        <p className="text-sm text-muted">
-          Accounts, preferences and the database are ready. The agent orchestrator that turns a prompt into an
-          itinerary is the next phase of the build.
-        </p>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">Plan a trip</h1>
+        <p className="text-sm text-muted">Say where, for how long and how much. Include a total budget.</p>
+      </div>
+      <Card>
+        <NewTripForm defaultCurrency={preferences?.currency ?? "INR"} homeCity={preferences?.home_city ?? null} />
       </Card>
     </div>
   );

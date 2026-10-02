@@ -14,6 +14,12 @@
   --danger: #c0362c;
   --success: #1c7c54;
   --radius: 0.625rem;
+
+  /* One fixed colour per agent, so the feed can be read at a glance. */
+  --agent-supervisor: #6d5bd0;
+  --agent-logistics: #2f7fd1;
+  --agent-recommendations: #c2578a;
+  --agent-budget: #b7791f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -40,6 +46,10 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-agent-supervisor: var(--agent-supervisor);
+  --color-agent-logistics: var(--agent-logistics);
+  --color-agent-recommendations: var(--agent-recommendations);
+  --color-agent-budget: var(--agent-budget);
   --radius-md: var(--radius);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
