@@ -13,7 +13,7 @@ export default async function LoginPage({
   const { next, error } = await searchParams;
   return (
     <div className="space-y-5">
-      <h1 className="text-lg font-semibold">Log in</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight">Log in</h1>
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
