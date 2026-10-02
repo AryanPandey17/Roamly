@@ -7,16 +7,19 @@ Last updated: 2026-10-03. What the interface is built from and where it differs 
 | Piece | Where | Notes |
 |---|---|---|
 | Tokens | `src/app/globals.css` | Colours, radius, shadow and one colour per agent, each with a light and a dark value. Components use token names only |
-| Type | Geist for interface text, Fraunces for headings | Both are bundled packages, so the build needs no network |
+| Type | Inter for interface text, Manrope (heavy, tight) for headings | Both are bundled packages, so the build needs no network |
 | Theme | `src/components/theme.tsx` | Light, dark or system. An inline script sets `<html data-theme>` before first paint, so there is no flash. The choice is stored in the browser |
-| Primitives | `src/components/ui/` | Button, Card, Badge, Field, Skeleton. Small, own code on Tailwind CSS 4 |
+| Primitives | `src/components/ui/` | Button (pill), Card, Badge, Field, Skeleton. Small, own code on Tailwind CSS 4 |
+| Gradient panels | `.photo-*` classes in `globals.css` | Stand in for destination photography and carry the illustrations |
+| Illustrations | `src/components/illustrations.tsx` | Itinerary cards, route, places, budget receipt, negotiation bubbles, saved stack, preference sliders. Drawn in code |
 | Icons | `lucide-react` | |
 
 ## Screens
 
 | Route | What it does |
 |---|---|
-| `/` | Landing: 3D globe, a replayed example negotiation (labelled "Example run"), the four agents, a scroll-told walk through one run, and what makes the output checkable |
+| `/` | Landing in the original Roamly layout: centred hero, gradient banner with the 3D globe, alternating agent rows with illustrations, a four-card grid, a replayed example negotiation (labelled "Example run"), a scroll-told walk through one run, call-to-action band and footer |
+| `/home` | Signed-in home: greeting, four large gradient cards (plan a trip, your trips, saved, preferences), recent trips, and a composer that starts a trip from one sentence |
 | `/login`, `/signup`, `/forgot-password`, `/auth/update-password` | Split layout with the form on one side |
 | `/onboarding` | Preference defaults, skippable |
 | `/trips` | Trip cards with status, search once there are more than three, delete with confirmation |
@@ -26,6 +29,10 @@ Last updated: 2026-10-03. What the interface is built from and where it differs 
 | `/settings` | Profile, preferences, theme, password |
 | `/share/[token]` | Read-only itinerary with map, no account needed |
 | `/debug/runs/[id]` | Model and tool calls for a run |
+
+## App frame
+
+A sidebar on wide screens (Home, Trips, Saved, Settings, New trip, theme, account) and a top bar plus bottom tab bar on phones. The layout takes its structure from mindtrip.ai's signed-in screen; the content is limited to what Roamly actually does.
 
 ## The trip page
 
@@ -50,7 +57,8 @@ Last updated: 2026-10-03. What the interface is built from and where it differs 
 | Marker clustering | Not added | An itinerary has at most a few dozen pins; the day filter does the same job |
 | Swap an item for another candidate | Not added | The agents' other candidates live in the run's checkpoint, not in the itinerary tables. Remove, move and retime are in |
 | Theme saved to the profile | Saved in the browser | Reading it from the profile on every page would make every page wait on the database before first paint |
-| Custom illustrations, Lottie, parallax | Not added | The globe, the replayed negotiation and the scroll story carry the landing page |
+| Lottie, parallax | Not added | Illustrations are drawn in code; the globe, the replayed negotiation and the scroll story carry the motion |
+| Google's logo on the sign-in button | A plain "G" badge | The official mark is Google's asset; drop it into `GBadge` in `illustrations.tsx` from Google's sign-in branding page if you want it |
 
 ## How this was checked
 
