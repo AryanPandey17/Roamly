@@ -35,7 +35,7 @@ export default async function RunDebugPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Run details</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Run details</h1>
         <p className="text-sm text-muted">
           Status {run.status} · {run.llm_calls} model calls · {run.tool_calls} tool calls · {run.rejections} rejections ·{" "}
           <Link href={`/trips/${run.trip_id}`} className="underline">

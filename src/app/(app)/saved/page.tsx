@@ -13,12 +13,12 @@ export default async function SavedPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Saved</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Saved</h1>
         <p className="text-sm text-muted">Flights, stays and places you bookmarked from your itineraries.</p>
       </div>
       {saved.length === 0 ? (
         <Card className="mx-auto max-w-xl space-y-2 py-10 text-center">
-          <p className="font-display text-xl font-semibold">Nothing saved yet</p>
+          <p className="font-display text-xl font-extrabold">Nothing saved yet</p>
           <p className="text-sm text-muted">Use the bookmark on any flight, stay or activity in an itinerary to keep it here.</p>
         </Card>
       ) : (

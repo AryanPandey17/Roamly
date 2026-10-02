@@ -1,3 +1,5 @@
+import type { Enums } from "@/types/database";
+
 export const money = (amount: number, currency: string) => {
   try {
     return new Intl.NumberFormat("en", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
@@ -33,3 +35,14 @@ export const BREAKDOWN_ROWS: { key: keyof Omit<Breakdown, "total">; label: strin
   { key: "food", label: "Food (estimate)", tone: "bg-agent-budget" },
   { key: "localTransport", label: "Local transport (estimate)", tone: "bg-agent-supervisor" },
 ];
+
+/** Trip status as shown to the user. Lives here (not in a client file) so server components can use it too. */
+export const STATUS: Record<Enums<"trip_status">, { label: string; tone: "neutral" | "success" | "danger" | "warning" | "primary" }> = {
+  draft: { label: "Draft", tone: "neutral" },
+  planning: { label: "Planning", tone: "primary" },
+  ready: { label: "Within budget", tone: "success" },
+  over_budget: { label: "Over budget", tone: "danger" },
+  paused: { label: "Paused", tone: "warning" },
+  failed: { label: "Stopped", tone: "danger" },
+};
+

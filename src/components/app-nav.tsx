@@ -1,36 +1,62 @@
 "use client";
 
+import { Bookmark, Briefcase, Home, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/trips", label: "Trips" },
-  { href: "/saved", label: "Saved" },
-  { href: "/settings", label: "Settings" },
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/trips", label: "Trips", icon: Briefcase },
+  { href: "/saved", label: "Saved", icon: Bookmark },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-/** Main navigation with the current section marked for sighted and screen-reader users. */
-export function AppNav() {
+/**
+ * Main navigation. `rail` is the sidebar list on wide screens; `bar` is the
+ * bottom tab bar on phones. The current section is marked with aria-current.
+ */
+export function AppNav({ variant }: { variant: "rail" | "bar" }) {
   const pathname = usePathname();
-  return (
-    <nav aria-label="Main" className="flex items-center gap-1 text-sm">
-      {NAV.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        return (
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  if (variant === "bar") {
+    return (
+      <nav aria-label="Main" className="grid grid-cols-4">
+        {NAV.map(({ href, label, icon: Icon }) => (
           <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
+            key={href}
+            href={href}
+            aria-current={isActive(href) ? "page" : undefined}
             className={cn(
-              "rounded-full px-3 py-1.5 transition",
-              active ? "bg-surface-2 font-medium text-foreground" : "text-muted hover:text-foreground"
+              "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+              isActive(href) ? "text-foreground" : "text-muted"
             )}
           >
-            {item.label}
+            <Icon className="size-5" aria-hidden fill={isActive(href) ? "currentColor" : "none"} fillOpacity={0.15} />
+            {label}
           </Link>
-        );
-      })}
+        ))}
+      </nav>
+    );
+  }
+
+  return (
+    <nav aria-label="Main" className="flex flex-col gap-1">
+      {NAV.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          aria-current={isActive(href) ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-4 rounded-xl px-3 py-3 text-[0.98rem] font-medium transition-colors",
+            isActive(href) ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground"
+          )}
+        >
+          <Icon className="size-[22px]" aria-hidden fill={isActive(href) ? "currentColor" : "none"} fillOpacity={0.15} />
+          {label}
+        </Link>
+      ))}
     </nav>
   );
 }

@@ -17,7 +17,7 @@ export default async function TripsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Your trips</h1>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">Your trips</h1>
           <p className="text-sm text-muted">
             {trips.length === 0 ? "Nothing planned yet." : `${trips.length} trip${trips.length > 1 ? "s" : ""}`}
           </p>
@@ -29,7 +29,7 @@ export default async function TripsPage() {
 
       {trips.length === 0 ? (
         <Card className="mx-auto max-w-xl space-y-4 py-12 text-center">
-          <p className="font-display text-2xl font-semibold">Where to first?</p>
+          <p className="font-display text-2xl font-extrabold">Where to first?</p>
           <p className="mx-auto max-w-sm text-sm text-muted">
             Give a destination, a length and a total budget. Three agents will argue it out and hand you a plan that
             fits.

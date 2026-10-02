@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">Settings</h1>
 
       <section className="space-y-3">
         <h2 className="font-medium">Profile</h2>

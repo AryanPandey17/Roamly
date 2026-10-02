@@ -53,13 +53,13 @@ export async function completeOnboarding(_prev: FormState, formData: FormData): 
   } catch {
     return { error: "Could not save your preferences. Try again." };
   }
-  redirect("/trips/new");
+  redirect("/home");
 }
 
 export async function skipOnboarding() {
   const user = await requireUser();
   await updateProfile(user.id, { onboarded_at: new Date().toISOString() });
-  redirect("/trips/new");
+  redirect("/home");
 }
 
 export async function saveProfile(_prev: FormState, formData: FormData): Promise<FormState> {

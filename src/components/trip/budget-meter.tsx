@@ -24,7 +24,7 @@ export function BudgetMeter({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <p className="font-display text-2xl font-semibold tabular-nums">
+        <p className="font-display text-2xl font-extrabold tabular-nums">
           {money(breakdown.total, currency)}
           <span className="ml-1.5 font-sans text-sm font-normal text-muted">of {money(limit, currency)}</span>
         </p>

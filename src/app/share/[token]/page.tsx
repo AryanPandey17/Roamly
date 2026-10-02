@@ -34,13 +34,13 @@ export default async function SharedTripPage({ params }: { params: Promise<{ tok
           <>
             <div className="space-y-1">
               <p className="text-sm text-muted">Shared itinerary</p>
-              <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{shared.title}</h1>
+              <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{shared.title}</h1>
             </div>
             <ItineraryBoard itinerary={shared.itinerary} days={shared.days} items={shared.items} />
           </>
         ) : (
           <Card className="mx-auto max-w-md space-y-2 text-center">
-            <p className="font-display text-xl font-semibold">This link is no longer active</p>
+            <p className="font-display text-xl font-extrabold">This link is no longer active</p>
             <p className="text-sm text-muted">The owner may have stopped sharing this trip.</p>
           </Card>
         )}

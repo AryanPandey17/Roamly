@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /** Only allow same-site relative paths as post-login redirect targets. */
-export function safeNextPath(value: unknown, fallback = "/trips") {
+export function safeNextPath(value: unknown, fallback = "/home") {
   if (typeof value !== "string") return fallback;
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
   return value;

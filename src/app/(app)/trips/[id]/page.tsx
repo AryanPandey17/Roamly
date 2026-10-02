@@ -59,7 +59,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
         <Link href="/trips" className="inline-flex items-center gap-1 text-sm text-muted hover:text-foreground print:hidden">
           <ArrowLeft className="size-4" aria-hidden /> All trips
         </Link>
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{trip.title}</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{trip.title}</h1>
         {facts.length > 0 ? (
           <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
             {facts.map(({ icon: Icon, text }) => (

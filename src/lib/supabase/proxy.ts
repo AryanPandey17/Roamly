@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/env";
 
 /** Pages that require a signed-in user. */
-const PROTECTED_PREFIXES = ["/trips", "/onboarding", "/settings", "/saved", "/debug"];
+const PROTECTED_PREFIXES = ["/home", "/trips", "/onboarding", "/settings", "/saved", "/debug"];
 /** Pages a signed-in user has no reason to see. */
 const AUTH_PAGES = ["/login", "/signup", "/forgot-password"];
 
@@ -53,7 +53,7 @@ export async function updateSession(request: NextRequest) {
     return redirectTo("/login", `?next=${encodeURIComponent(path + request.nextUrl.search)}`);
   }
   if (signedIn && startsWithAny(path, AUTH_PAGES)) {
-    return redirectTo("/trips");
+    return redirectTo("/home");
   }
 
   return response;

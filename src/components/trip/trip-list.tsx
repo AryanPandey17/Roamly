@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import type { Enums } from "@/types/database";
-import { money, shortDate } from "./format";
+import { money, shortDate, STATUS } from "./format";
 
 export type TripCard = {
   id: string;
@@ -21,15 +21,6 @@ export type TripCard = {
   currency: string | null;
   total_cost: number | null;
   status: Enums<"trip_status">;
-};
-
-const STATUS: Record<Enums<"trip_status">, { label: string; tone: "neutral" | "success" | "danger" | "warning" | "primary" }> = {
-  draft: { label: "Draft", tone: "neutral" },
-  planning: { label: "Planning", tone: "primary" },
-  ready: { label: "Within budget", tone: "success" },
-  over_budget: { label: "Over budget", tone: "danger" },
-  paused: { label: "Paused", tone: "warning" },
-  failed: { label: "Stopped", tone: "danger" },
 };
 
 export function TripList({ trips }: { trips: TripCard[] }) {
@@ -78,7 +69,7 @@ export function TripList({ trips }: { trips: TripCard[] }) {
             const status = STATUS[trip.status];
             return (
               <li key={trip.id}>
-                <Card className="group relative flex h-full flex-col gap-3 transition hover:border-primary/50">
+                <Card className="group relative flex h-full flex-col gap-3 transition hover:-translate-y-0.5 hover:border-foreground/30">
                   <div className="flex items-start justify-between gap-3">
                     <Badge tone={status.tone}>{status.label}</Badge>
                     <button
@@ -90,7 +81,7 @@ export function TripList({ trips }: { trips: TripCard[] }) {
                       <Trash2 className="size-4" aria-hidden />
                     </button>
                   </div>
-                  <h2 className="font-display text-xl font-semibold leading-snug">
+                  <h2 className="font-display text-xl font-extrabold leading-snug">
                     <Link href={`/trips/${trip.id}`} className="after:absolute after:inset-0">
                       {trip.title}
                     </Link>

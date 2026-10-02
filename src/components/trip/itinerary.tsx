@@ -146,7 +146,7 @@ export function ItineraryBoard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2
           id="itinerary-heading"
-          className="font-display text-2xl font-semibold"
+          className="font-display text-2xl font-extrabold"
         >
           Itinerary
         </h2>
@@ -199,7 +199,7 @@ export function ItineraryBoard({
             <li key={day.id}>
               <Card className="space-y-3">
                 <header className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="font-display text-lg font-semibold">
+                  <h3 className="font-display text-lg font-extrabold">
                     Day {day.day_number}
                     <span className="ml-2 font-sans text-sm font-normal text-muted">
                       {shortDate(day.date)} · {day.title}
