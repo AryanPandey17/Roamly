@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Design tokens. Components use these names only, never raw colours.
+   Dark values follow the system setting for now; the manual theme toggle
+   arrives with the Phase 6 UI pass. */
+:root {
+  --background: #f8f9fb;
+  --surface: #ffffff;
+  --foreground: #161b26;
+  --muted: #5f6b7d;
+  --border: #dfe3ea;
+  --primary: #3d4fd6;
+  --primary-foreground: #ffffff;
+  --danger: #c0362c;
+  --success: #1c7c54;
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1218;
+    --surface: #181c25;
+    --foreground: #e8ebf1;
+    --muted: #98a2b3;
+    --border: #2a303c;
+    --primary: #8090ff;
+    --primary-foreground: #0f1218;
+    --danger: #ff8a80;
+    --success: #5fd3a3;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --radius-md: var(--radius);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
