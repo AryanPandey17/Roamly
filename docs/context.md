@@ -45,7 +45,7 @@ All agents share these rules: they read and write the shared `TripState`; they g
 | **Writes** | `request` (parsed), `assumptions`, `negotiation.instruction`, `itinerary`, `status`. |
 | **Model role** | `reasoning` for parse and finalize. Mediation text is built from the Budget verdict by template, with no LLM call. |
 | **Acceptance criteria** | Parsed request passes the Zod schema; destination geocodes; dates are in the future and end ≥ start; final itinerary references only IDs present in state; itinerary total equals the calculator's total. |
-| **Failure modes** | Ambiguous destination → picks one, records the assumption. Missing budget → asks nothing, assumes a default from the user's budget style and records it. Unparseable request → run ends with a clear error asking the user to rephrase. Finalize output invalid → deterministic day distribution is used and flagged. |
+| **Failure modes** | Ambiguous destination → picks one, records the assumption. Missing budget → the run stops and asks the user to add one; a made-up limit would make the negotiation meaningless. Unparseable request → run ends with a clear error asking the user to rephrase. Finalize output invalid → deterministic day distribution is used and flagged. |
 
 Example:
 

@@ -131,7 +131,7 @@ A clean run is about 6–7 LLM requests. A worst-case run with three rejections 
 
 ### 2.6 Checkpointing and resume
 
-- `PostgresSaver.fromConnString(SUPABASE_DB_URL, { schema: "langgraph" })`, with `setup()` run once by a script.
+- `PostgresSaver.fromConnString(SUPABASE_DB_URL, { schema: "langgraph" })`, with `setup()` run automatically when the server first needs it.
 - `thread_id = runId`. State is saved after every step.
 - **Pause:** when every model for a role is exhausted, or a tool fails after retries, the node throws a typed `ProviderExhaustedError`. The run is marked `paused` with a clear message. The last checkpoint is intact.
 - **Resume:** `resumeTrip(runId, onEvent)` re-invokes the graph on the same thread with no new input. LangGraph continues from the last saved step. Completed nodes are not re-run.
@@ -406,7 +406,6 @@ npm install
 cp .env.example .env          # fill in keys
 npm run db:migrate            # apply supabase/migrations to the project
 npm run db:types              # regenerate src/types/database.ts
-npm run checkpointer:setup    # one-time: create LangGraph checkpoint tables
 npm run models:check          # optional: verify configured free models respond
 npm run dev
 ```

@@ -11,6 +11,7 @@ This branch is a ground-up refactor of the original prototype. Read the docs in 
 | `docs/ux_flow.md` | Screens and flows |
 | `docs/implementation_plan.md` | Phases, tasks and checks |
 | `docs/database.md` | Schema, RLS policies, ER diagram |
+| `docs/orchestrator.md` | What the orchestrator does, how it was checked |
 | `docs/audit.md` | What the old code looked like and why it was replaced |
 
 ## Status
@@ -18,8 +19,8 @@ This branch is a ground-up refactor of the original prototype. Read the docs in 
 | Phase | State |
 |---|---|
 | 3. Database, RLS, auth | Done |
-| 4. LLM layer and LangGraph orchestrator | Next |
-| 5. Real travel APIs, maps | Pending |
+| 4. LLM layer and LangGraph orchestrator | Done (on sample travel data) |
+| 5. Real travel APIs, maps | Next |
 | 6. Frontend | Pending |
 
 ## Setup
@@ -44,7 +45,8 @@ In the Supabase dashboard, under Authentication → URL Configuration, set the S
 | `npm run lint` | ESLint |
 | `npm run db:migrate` | Apply SQL migrations |
 | `npm run db:types` | Regenerate `src/types/database.ts` |
+| `npm run models:check` | Ping each configured model with a tiny tool call |
 
 ## Stack
 
-Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Supabase (Postgres, Auth, RLS), Zod. LangGraph.js arrives in Phase 4.
+Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Supabase (Postgres, Auth, RLS), Zod, LangGraph.js, OpenRouter and NVIDIA free models.
