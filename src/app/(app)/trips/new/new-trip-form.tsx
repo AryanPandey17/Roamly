@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -74,7 +75,7 @@ export function NewTripForm({ defaultCurrency, homeCity }: { defaultCurrency: st
           maxLength={4000}
           rows={3}
           placeholder={EXAMPLES[0]}
-          className="w-full rounded-md border border-border bg-surface p-3 text-sm placeholder:text-muted"
+          className="w-full resize-none rounded-md border border-border bg-surface p-4 text-base placeholder:text-muted/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((example) => (
@@ -90,8 +91,11 @@ export function NewTripForm({ defaultCurrency, homeCity }: { defaultCurrency: st
         </div>
       </div>
 
-      <details className="rounded-md border border-border p-4">
-        <summary className="cursor-pointer text-sm font-medium">Add details (optional)</summary>
+      <details className="group rounded-md border border-border p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+          Add details (optional)
+          <ChevronDown className="size-4 text-muted transition group-open:rotate-180" aria-hidden />
+        </summary>
         <p className="mt-2 text-xs text-muted">Anything you fill in here overrides what is read from the description.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="From" htmlFor="origin" hint={homeCity ? `Defaults to ${homeCity}.` : undefined}>
@@ -129,8 +133,9 @@ export function NewTripForm({ defaultCurrency, homeCity }: { defaultCurrency: st
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={pending}>
-        {pending ? "Starting…" : "Plan this trip"}
+      <Button type="submit" size="lg" disabled={pending}>
+        {pending ? "Starting…" : "Start the negotiation"}
+        {pending ? null : <ArrowRight className="size-5" aria-hidden />}
       </Button>
     </form>
   );

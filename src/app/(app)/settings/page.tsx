@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { savePreferences } from "../account-actions";
 import { PreferencesForm } from "@/components/preferences-form";
+import { ThemeToggle } from "@/components/theme";
 import { buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getPreferences, getProfile } from "@/server/account";
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
 
       <section className="space-y-3">
         <h2 className="font-medium">Profile</h2>
@@ -29,6 +30,14 @@ export default async function SettingsPage() {
         <h2 className="font-medium">Travel preferences</h2>
         <Card>
           <PreferencesForm preferences={preferences} action={savePreferences} submitLabel="Save preferences" />
+        </Card>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-medium">Appearance</h2>
+        <Card className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted">Light, dark, or follow your device. Saved in this browser.</p>
+          <ThemeToggle />
         </Card>
       </section>
 

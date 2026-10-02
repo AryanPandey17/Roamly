@@ -15,7 +15,7 @@ export default async function OnboardingPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">A few defaults</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">A few defaults</h1>
         <p className="text-sm text-muted">
           These fill the gaps when a trip request leaves something out. Everything is optional and can be changed
           in Settings.

@@ -2,10 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { BudgetSnapshot } from "@/orchestrator";
+import { AGENTS, AgentAvatar, agentOf, type AgentId } from "./agents";
+import { BudgetMeter } from "./budget-meter";
+import { money } from "./format";
 
 export type FeedEvent = {
   seq: number;
@@ -16,88 +20,52 @@ export type FeedEvent = {
   data?: Record<string, unknown> | null;
 };
 
-type Phase = "live" | "done" | "paused" | "failed";
+export type Phase = "live" | "done" | "paused" | "failed";
 
-const AGENTS = [
-  { id: "supervisor", name: "Supervisor", role: "Executive", tone: "bg-agent-supervisor" },
-  { id: "logistics", name: "Logistics", role: "Realist", tone: "bg-agent-logistics" },
-  { id: "recommendations", name: "Recommendations", role: "Dreamer", tone: "bg-agent-recommendations" },
-  { id: "budget", name: "Budget", role: "Skeptic", tone: "bg-agent-budget" },
-] as const;
-
-const KIND_LABEL: Record<string, string> = {
-  proposal: "Proposal",
-  rejection: "Rejected",
-  revision: "Revision",
-  approval: "Approved",
-  mediation: "Mediation",
-  compromise: "Compromise",
-  final: "Final",
-  error: "Error",
+const KIND: Record<string, { label: string; tone: "neutral" | "success" | "danger" | "warning" | "primary" }> = {
+  proposal: { label: "Proposal", tone: "primary" },
+  rejection: { label: "Rejected", tone: "danger" },
+  revision: { label: "Revision", tone: "primary" },
+  approval: { label: "Approved", tone: "success" },
+  mediation: { label: "Mediation", tone: "neutral" },
+  compromise: { label: "Compromise", tone: "warning" },
+  final: { label: "Final", tone: "success" },
+  error: { label: "Error", tone: "danger" },
 };
 
-const money = (amount: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${Math.round(amount)}`;
-  }
-};
+const ROSTER: AgentId[] = ["supervisor", "logistics", "recommendations", "budget"];
 
-function BudgetMeter({ budget }: { budget: BudgetSnapshot | null }) {
-  if (!budget) {
-    return <p className="text-sm text-muted">Waiting for the first budget audit.</p>;
+/** Which agents are expected to speak next, read off the last event. Drives the "working" indicators. */
+function workingNow(events: FeedEvent[], phase: Phase): Set<string> {
+  if (phase !== "live") return new Set();
+  const last = events.at(-1);
+  if (!last) return new Set(["supervisor"]);
+  const proposals = events.filter((e) => e.kind === "proposal").map((e) => e.agent);
+  switch (last.kind) {
+    case "info":
+      return last.agent === "supervisor" && events.length > 1 ? new Set(["logistics", "recommendations"]) : new Set(["supervisor"]);
+    case "proposal":
+      return proposals.includes("logistics") && proposals.includes("recommendations")
+        ? new Set(["budget"])
+        : new Set(["logistics", "recommendations"].filter((a) => !proposals.includes(a)));
+    case "rejection":
+      return new Set(["supervisor"]);
+    case "mediation":
+      return new Set([(last.data?.instruction as { target?: string } | undefined)?.target ?? "recommendations"]);
+    case "revision":
+      return new Set(["budget"]);
+    case "approval":
+    case "compromise":
+      return new Set(["supervisor"]);
+    default:
+      return new Set();
   }
-  const over = budget.total > budget.limit;
-  const percent = Math.min(100, Math.round((budget.total / budget.limit) * 100));
-  const rows = [
-    ["Flights", budget.breakdown.flights],
-    ["Stay", budget.breakdown.stay],
-    ["Activities", budget.breakdown.activities],
-    ["Food (estimate)", budget.breakdown.food],
-    ["Local transport (estimate)", budget.breakdown.localTransport],
-  ] as const;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-lg font-semibold">
-          {money(budget.total, budget.currency)}{" "}
-          <span className="text-sm font-normal text-muted">of {money(budget.limit, budget.currency)}</span>
-        </p>
-        <span className={cn("text-sm font-medium", over ? "text-danger" : "text-success")}>
-          {over ? `Over by ${money(budget.overBy, budget.currency)}` : "Within budget"}
-        </span>
-      </div>
-      <div
-        role="meter"
-        aria-label="Budget used"
-        aria-valuemin={0}
-        aria-valuemax={budget.limit}
-        aria-valuenow={Math.round(budget.total)}
-        className="h-2 overflow-hidden rounded-full bg-border"
-      >
-        <div
-          className={cn("h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none", over ? "bg-danger" : "bg-success")}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        {rows.map(([label, amount]) => (
-          <div key={label} className="contents">
-            <dt className="text-muted">{label}</dt>
-            <dd className="text-right tabular-nums">{money(amount, budget.currency)}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
 }
 
 /**
- * The live negotiation view. Starts from the events already stored, then
- * follows the run over Server-Sent Events. Reconnects resume from the last
- * sequence number, so nothing is shown twice.
+ * The live negotiation. Starts from the events already stored, then follows
+ * the run over Server-Sent Events. Reconnects resume from the last sequence
+ * number, so nothing is shown twice.
  */
 export function Negotiation({
   runId,
@@ -119,7 +87,8 @@ export function Negotiation({
   const [attempt, setAttempt] = useState(0);
   const [resuming, setResuming] = useState(false);
   const lastSeq = useRef(initialEvents.at(-1)?.seq ?? -1);
-  const feedEnd = useRef<HTMLDivElement>(null);
+  const feed = useRef<HTMLOListElement>(null);
+  const pinned = useRef(true);
 
   useEffect(() => {
     if (phase !== "live") return;
@@ -150,9 +119,11 @@ export function Negotiation({
     return () => source.close();
   }, [phase, runId, router, attempt]);
 
+  // Follow new messages only while the reader is at the bottom of the feed.
   useEffect(() => {
-    if (phase === "live") feedEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [events.length, phase]);
+    const el = feed.current;
+    if (el && pinned.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [events.length]);
 
   const budget = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i--) {
@@ -162,6 +133,7 @@ export function Negotiation({
     return null;
   }, [events]);
 
+  const working = workingNow(events, phase);
   const rejections = events.filter((e) => e.kind === "rejection").length;
   const assumptions = (events.find((e) => Array.isArray(e.data?.assumptions))?.data?.assumptions ?? []) as string[];
   const lastByAgent = new Map(events.map((e) => [e.agent, e]));
@@ -183,30 +155,39 @@ export function Negotiation({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
       <div className="space-y-4">
-        <Card className="space-y-3">
-          <h2 className="text-sm font-medium">Budget</h2>
-          <BudgetMeter budget={budget} />
-          <p className="text-xs text-muted">
-            Rejections: {Math.min(rejections, maxRejections)} of {maxRejections}
-          </p>
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium">Budget</h2>
+            <span className="text-xs text-muted">
+              Rejections {Math.min(rejections, maxRejections)} of {maxRejections}
+            </span>
+          </div>
+          {budget ? (
+            <BudgetMeter breakdown={budget.breakdown} limit={budget.limit} currency={budget.currency} />
+          ) : (
+            <p className="text-sm text-muted">The meter starts moving after the first audit.</p>
+          )}
         </Card>
 
         <Card className="space-y-3">
           <h2 className="text-sm font-medium">Agents</h2>
-          <ul className="space-y-2">
-            {AGENTS.map((agent) => {
-              const last = lastByAgent.get(agent.id);
+          <ul className="space-y-3">
+            {ROSTER.map((id) => {
+              const agent = AGENTS[id];
+              const last = lastByAgent.get(id);
+              const busy = working.has(id);
               return (
-                <li key={agent.id} className="flex items-center gap-3 text-sm">
-                  <span aria-hidden className={cn("grid size-7 place-items-center rounded-full text-xs font-semibold text-white", agent.tone)}>
-                    {agent.name[0]}
+                <li key={id} className="flex items-center gap-3 text-sm">
+                  <AgentAvatar agent={id} pulse={busy} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium leading-tight">{agent.name}</span>
+                    <span className="block text-xs text-muted">{agent.role}</span>
                   </span>
-                  <span className="flex-1">
-                    {agent.name} <span className="text-muted">· {agent.role}</span>
+                  <span className={cn("text-xs", busy ? agent.text : "text-muted")}>
+                    {busy ? "Working…" : last ? (KIND[last.kind]?.label ?? "Done") : "Waiting"}
                   </span>
-                  <span className="text-xs text-muted">{last ? (KIND_LABEL[last.kind] ?? "Active") : "Waiting"}</span>
                 </li>
               );
             })}
@@ -225,86 +206,88 @@ export function Negotiation({
         ) : null}
       </div>
 
-      <Card className="space-y-3">
+      <Card className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Negotiation</h2>
           {phase === "live" ? (
-            <span className="flex items-center gap-2 text-xs text-muted">
-              <span className="size-2 animate-pulse rounded-full bg-success motion-reduce:animate-none" /> Live
-            </span>
-          ) : null}
+            <Badge tone="success">
+              <span className="size-1.5 animate-pulse rounded-full bg-success" /> Live
+            </Badge>
+          ) : phase === "paused" ? (
+            <Badge tone="warning">Paused</Badge>
+          ) : phase === "failed" ? (
+            <Badge tone="danger">Stopped</Badge>
+          ) : (
+            <Badge>Finished</Badge>
+          )}
         </div>
 
         {(phase === "paused" || phase === "failed") && notice ? (
-          <div role="alert" className="space-y-3 rounded-md border border-border p-3 text-sm">
+          <div role="alert" className="space-y-3 rounded-md border border-border bg-surface-2 p-3 text-sm">
             <p className={phase === "failed" ? "text-danger" : undefined}>{notice}</p>
             {phase === "paused" ? (
-              <Button onClick={resume} disabled={resuming}>
+              <Button size="sm" onClick={resume} disabled={resuming}>
                 {resuming ? "Resuming…" : "Resume"}
               </Button>
             ) : null}
           </div>
         ) : null}
 
-        {events.length === 0 ? (
-          <p className="text-sm text-muted">Waiting for the Supervisor to read the request.</p>
-        ) : (
-          <ol aria-live="polite" className="space-y-3">
-            {events.map((event) => {
-              const agent = AGENTS.find((a) => a.id === event.agent);
-              const option = event.data?.option as
-                | { title: string; price: number; currency: string; facts: string[] }
-                | undefined;
-              const fallback = event.data?.fallback as string | undefined;
-              return (
-                <li key={event.seq} className="flex gap-3">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold text-white",
-                      agent?.tone ?? "bg-muted"
-                    )}
-                  >
-                    {(agent?.name ?? "S")[0]}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <span className="font-medium text-foreground">{agent?.name ?? "System"}</span>
-                      {KIND_LABEL[event.kind] ? (
-                        <span
-                          className={cn(
-                            "rounded-full border px-2 py-0.5",
-                            event.kind === "rejection" || event.kind === "error"
-                              ? "border-danger text-danger"
-                              : event.kind === "approval"
-                                ? "border-success text-success"
-                                : "border-border"
-                          )}
-                        >
-                          {KIND_LABEL[event.kind]}
-                        </span>
-                      ) : null}
-                      {event.round ? <span>Round {event.round}</span> : null}
-                    </p>
-                    <p className="text-sm">{event.text}</p>
-                    {option ? (
-                      <div className="rounded-md border border-border p-2 text-sm">
-                        <p className="font-medium">
-                          {option.title} · {money(option.price, option.currency)}
-                        </p>
-                        <p className="text-xs text-muted">{option.facts.join(" · ")}</p>
-                      </div>
-                    ) : null}
-                    {fallback ? (
-                      <p className="text-xs text-muted">Chosen by rule, not by the model: {fallback}.</p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        <div ref={feedEnd} />
+        <ol
+          ref={feed}
+          aria-live="polite"
+          aria-label="Agent messages"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          }}
+          className={cn("space-y-4 pr-1", phase === "live" && "max-h-[32rem] overflow-y-auto")}
+        >
+          {events.length === 0 ? (
+            <li className="text-sm text-muted">Waiting for the Supervisor to read the request.</li>
+          ) : null}
+          {events.map((event) => {
+            const agent = agentOf(event.agent);
+            const kind = KIND[event.kind];
+            const option = event.data?.option as
+              | { title: string; price: number; currency: string; facts: string[] }
+              | undefined;
+            const fallback = event.data?.fallback as string | undefined;
+            return (
+              <li key={event.seq} className="flex animate-rise gap-3">
+                <AgentAvatar agent={event.agent} />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <span className={cn("font-medium", agent.text)}>{agent.name}</span>
+                    {kind ? <Badge tone={kind.tone}>{kind.label}</Badge> : null}
+                    {event.round ? <span>Round {event.round}</span> : null}
+                  </p>
+                  <p className="text-sm leading-relaxed">{event.text}</p>
+                  {option ? (
+                    <div className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm">
+                      <p className="flex flex-wrap justify-between gap-2 font-medium">
+                        <span>{option.title}</span>
+                        <span className="tabular-nums">{money(option.price, option.currency)}</span>
+                      </p>
+                      <p className="text-xs text-muted">{option.facts.join(" · ")}</p>
+                    </div>
+                  ) : null}
+                  {fallback ? <p className="text-xs text-muted">Chosen by rule, not by the model: {fallback}.</p> : null}
+                </div>
+              </li>
+            );
+          })}
+          {phase === "live" && working.size > 0 ? (
+            <li className="flex items-center gap-2 pl-11 text-xs text-muted">
+              <span className="flex gap-1" aria-hidden>
+                <span className="size-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.2s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.1s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted" />
+              </span>
+              {[...working].map((id) => agentOf(id).name).join(" and ")} {working.size > 1 ? "are" : "is"} working
+            </li>
+          ) : null}
+        </ol>
 
         {lastModel ? (
           <p className="border-t border-border pt-2 text-xs text-muted">

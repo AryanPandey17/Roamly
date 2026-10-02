@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarPlus, Check, Copy, Download, Printer, Share2 } from "lucide-react";
 import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 
@@ -36,22 +37,22 @@ export function TripActions({ tripId, initialToken }: { tripId: string; initialT
     <div className="space-y-3 print:hidden">
       <div className="flex flex-wrap gap-2">
         {token ? (
-          <Button variant="secondary" onClick={() => call("DELETE")} disabled={busy}>
-            Stop sharing
+          <Button variant="secondary" size="sm" onClick={() => call("DELETE")} disabled={busy}>
+            <Share2 className="size-4" aria-hidden /> Stop sharing
           </Button>
         ) : (
-          <Button variant="secondary" onClick={() => call("POST")} disabled={busy}>
-            {busy ? "Creating link…" : "Share"}
+          <Button variant="secondary" size="sm" onClick={() => call("POST")} disabled={busy}>
+            <Share2 className="size-4" aria-hidden /> {busy ? "Creating link…" : "Share"}
           </Button>
         )}
-        <a className={buttonClass("secondary")} href={`/api/trips/${tripId}/export?format=ics`}>
-          Add to calendar
+        <a className={buttonClass("secondary", undefined, "sm")} href={`/api/trips/${tripId}/export?format=ics`}>
+          <CalendarPlus className="size-4" aria-hidden /> Add to calendar
         </a>
-        <a className={buttonClass("secondary")} href={`/api/trips/${tripId}/export?format=md`}>
-          Download markdown
+        <a className={buttonClass("secondary", undefined, "sm")} href={`/api/trips/${tripId}/export?format=md`}>
+          <Download className="size-4" aria-hidden /> Markdown
         </a>
-        <Button variant="secondary" onClick={() => window.print()}>
-          Print or save as PDF
+        <Button variant="secondary" size="sm" onClick={() => window.print()}>
+          <Printer className="size-4" aria-hidden /> Print or PDF
         </Button>
       </div>
 
@@ -59,7 +60,8 @@ export function TripActions({ tripId, initialToken }: { tripId: string; initialT
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">Anyone with this link can view the itinerary:</span>
           <code className="break-all rounded-md border border-border px-2 py-1 font-mono text-xs">{link}</code>
-          <Button variant="ghost" onClick={copy} className="h-8 px-2">
+          <Button variant="ghost" size="sm" onClick={copy}>
+            {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
             {copied ? "Copied" : "Copy"}
           </Button>
         </div>

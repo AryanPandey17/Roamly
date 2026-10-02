@@ -12,9 +12,9 @@ export default async function NewTripPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Plan a trip</h1>
-        <p className="text-sm text-muted">Say where, for how long and how much. Include a total budget.</p>
+      <div className="space-y-2">
+        <h1 className="font-display text-4xl font-semibold tracking-tight">Where to, and how much?</h1>
+        <p className="text-muted">One sentence is enough. Include a total budget so the agents have a limit to argue over.</p>
       </div>
       <Card>
         <NewTripForm defaultCurrency={preferences?.currency ?? "INR"} homeCity={preferences?.home_city ?? null} />
