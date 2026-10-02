@@ -176,8 +176,8 @@ flowchart LR
   P[Parse] --> L[Logistics] & R[Recommendations]
   L & R --> B{Budget audit}
   B -- approved --> F[Finalize]
-  B -- "rejected, < 3" --> M[Mediate] --> X[Target agent revises] --> B
-  B -- "rejected, = 3" --> C[Compromise] --> F
+  B -- "rejected, under 3" --> M[Mediate] --> X[Target agent revises] --> B
+  B -- "3rd rejection" --> C[Compromise] --> F
 ```
 
 ## 7. Glossary

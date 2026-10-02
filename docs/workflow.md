@@ -61,7 +61,7 @@ sequenceDiagram
   O->>L: Supervisor finalizes itinerary
   O-->>R: events (agent messages, state, done)
   R-->>U: SSE events
-  O->>DB: checkpoint after every step; events, logs, itinerary
+  O->>DB: checkpoint after every step, plus events, logs and itinerary
   U->>R: GET /trips/{tripId}  (itinerary page)
 ```
 
@@ -86,8 +86,8 @@ flowchart TD
   logistics --> audit[budget_audit]
   recs --> audit
   audit -->|approved| finalize[finalize<br/>Supervisor]
-  audit -->|"rejected and rejections < 3"| mediate[mediate<br/>Supervisor]
-  audit -->|"rejected and rejections = 3"| compromise[compromise]
+  audit -->|"rejected, under 3 rejections"| mediate[mediate<br/>Supervisor]
+  audit -->|"rejected, 3rd rejection"| compromise[compromise]
   mediate -->|target = logistics| logistics_rev[logistics_revise]
   mediate -->|target = recommendations| recs_rev[recs_revise]
   logistics_rev --> audit
