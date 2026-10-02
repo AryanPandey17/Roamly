@@ -2,9 +2,8 @@ import "server-only";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { Pool } from "pg";
 import { createLlm, type Deps } from "@/orchestrator";
-import { devProviders } from "@/orchestrator/providers/dev";
-import { openMeteoGeocoding } from "@/orchestrator/providers/open-meteo";
-import { createRunStore, createTelemetry } from "@/server/run-store";
+import { createProviders } from "@/orchestrator/providers";
+import { createRunStore, createTelemetry, createToolCache } from "@/server/run-store";
 
 // Built once per server process. Kept on globalThis so Next.js hot reload in
 // development does not open a new connection pool on every file save.
@@ -32,9 +31,8 @@ async function build(): Promise<Deps> {
     llm: createLlm({ telemetry }),
     store: createRunStore(),
     telemetry,
-    // Real geocoding; flights, stays, places and estimates are labelled dev
-    // fixtures until the real providers are wired in (Phase 5).
-    providers: { ...devProviders, geocoding: openMeteoGeocoding },
+    providers: createProviders(),
+    cache: createToolCache(),
     checkpointer,
     now: () => new Date(),
   };

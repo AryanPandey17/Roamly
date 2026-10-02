@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border bg-surface print:hidden">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-4">
           <Link href="/trips" className="font-semibold">
             Roamly

@@ -6,6 +6,7 @@ import type { Json, TablesUpdate } from "@/types/database";
 
 type RunStore = Deps["store"];
 type Telemetry = Deps["telemetry"];
+type ToolCache = Deps["cache"];
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value ?? null)) as Json;
 
@@ -139,6 +140,7 @@ export function createRunStore(): RunStore {
             day_number: day.dayNumber,
             date: day.date,
             title: day.title,
+            notes: day.weather,
           }))
         )
         .select("id, day_number");
@@ -163,6 +165,7 @@ export function createRunStore(): RunStore {
           provider: item.provider,
           external_id: item.externalId,
           deep_link: item.deepLink,
+          details: json({ isEstimate: item.isEstimate, sourceUrl: item.sourceUrl }),
         }))
       );
       if (items.length) fail("Could not save the itinerary items", (await db.from("itinerary_items").insert(items)).error);
@@ -273,6 +276,34 @@ export function createTelemetry(pool: Pool): Telemetry {
       } catch (error) {
         warn("provider_quota_usage", error);
       }
+    },
+  };
+}
+
+/**
+ * Tool result cache in the `tool_cache` table. Protects the free quotas:
+ * the same search within its time-to-live never reaches the provider twice.
+ */
+export function createToolCache(): ToolCache {
+  const db = createAdminClient();
+  return {
+    async get(key) {
+      const { data } = await db
+        .from("tool_cache")
+        .select("value")
+        .eq("key", key)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      return data?.value ?? null;
+    },
+    async set(key, tool, value, ttlSeconds) {
+      const { error } = await db.from("tool_cache").upsert({
+        key,
+        tool,
+        value: json(value),
+        expires_at: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+      });
+      if (error) console.warn(JSON.stringify({ level: "warn", where: "tool_cache", message: error.message }));
     },
   };
 }

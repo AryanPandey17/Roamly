@@ -19,6 +19,10 @@ const money = (amount: number, currency: string) => {
   }
 };
 
+const detailsOf = (item: Tables<"itinerary_items">) =>
+  (item.details ?? {}) as { isEstimate?: boolean; sourceUrl?: string | null };
+const isEstimate = (item: Tables<"itinerary_items">) => Boolean(detailsOf(item).isEstimate);
+
 const hhmm = (time: string | null) => (time ? time.slice(0, 5) : null);
 
 type Breakdown = { flights: number; stay: number; activities: number; food: number; localTransport: number; total: number };
@@ -34,7 +38,7 @@ export function ItineraryView({
 }) {
   const currency = itinerary.currency;
   const breakdown = itinerary.cost_breakdown as unknown as Breakdown;
-  const usesFixtures = items.some((item) => item.provider === "dev-fixture");
+  const hasEstimates = items.some((item) => isEstimate(item));
   const rows = [
     ["Flights", breakdown.flights],
     ["Stay", breakdown.stay],
@@ -61,10 +65,10 @@ export function ItineraryView({
         </span>
       </div>
 
-      {usesFixtures ? (
-        <p role="note" className="rounded-md border border-border bg-surface p-3 text-sm text-muted">
-          Flights, stays, activities and daily estimates on this page are sample data used while the real travel
-          providers are being connected. The negotiation, the arithmetic and the schedule are real.
+      {hasEstimates ? (
+        <p role="note" className="text-sm text-muted">
+          Flight and stay prices are live search results. Amounts marked “est.” are estimates read from web sources,
+          not quoted prices.
         </p>
       ) : null}
 
@@ -76,6 +80,7 @@ export function ItineraryView({
                 <h3 className="font-medium">
                   Day {day.day_number} <span className="font-normal text-muted">· {day.date} · {day.title}</span>
                 </h3>
+                {day.notes ? <p className="text-sm text-muted">Forecast: {day.notes}</p> : null}
                 <ul className="divide-y divide-border">
                   {items
                     .filter((item) => item.day_id === day.id)
@@ -94,9 +99,23 @@ export function ItineraryView({
                             <span className="font-medium">{item.title}</span>
                           )}
                           {item.description ? <span className="block text-muted">{item.description}</span> : null}
+                          {detailsOf(item).sourceUrl ? (
+                            <a
+                              href={detailsOf(item).sourceUrl!}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-muted underline"
+                            >
+                              Source of estimate
+                            </a>
+                          ) : null}
                         </span>
                         <span className="shrink-0 tabular-nums">
-                          {item.cost_amount > 0 ? money(item.cost_amount, currency) : "Free"}
+                          {item.cost_amount > 0
+                            ? `${isEstimate(item) ? "est. " : ""}${money(item.cost_amount, currency)}`
+                            : item.type === "activity" && !item.description?.includes("not found")
+                              ? "Free"
+                              : "–"}
                         </span>
                       </li>
                     ))}
@@ -122,7 +141,7 @@ export function ItineraryView({
           </dl>
           {itinerary.assumptions.length > 0 ? (
             <>
-              <h3 className="pt-2 text-sm font-medium">Assumptions</h3>
+              <h3 className="pt-2 text-sm font-medium">Notes and assumptions</h3>
               <ul className="list-disc space-y-1 pl-4 text-sm text-muted">
                 {itinerary.assumptions.map((a) => (
                   <li key={a}>{a}</li>
