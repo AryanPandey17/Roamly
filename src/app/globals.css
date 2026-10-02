@@ -1,46 +1,53 @@
 @import "tailwindcss";
-@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/inter";
 
 /* Design tokens. Components use these names only, never raw colours.
    The resolved theme is set on <html data-theme> before first paint
    (see components/theme.tsx), so there is no flash of the wrong theme. */
 :root {
-  --background: #faf8f4;
+  --background: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f3efe8;
-  --foreground: #1c1b19;
-  --muted: #6a655d;
-  --border: #e6e0d5;
-  --primary: #17594a;
+  --surface-2: #fbf9f5;
+  --foreground: #14171f;
+  --muted: #666b78;
+  --border: #eae7df;
+  --primary: #14453f;
   --primary-foreground: #ffffff;
-  --accent: #d94f25;
-  --danger: #b93a2b;
-  --success: #1d7a55;
+  --primary-soft: #e4f0ec;
+  --accent: #ff6a45;
+  --accent-deep: #e4552f;
+  --accent-soft: #ffede6;
+  --danger: #c23b2a;
+  --success: #17794f;
   --warning: #9a5f08;
-  --radius: 0.75rem;
-  --shadow: 0 1px 2px rgb(28 27 25 / 0.04), 0 8px 24px -12px rgb(28 27 25 / 0.12);
+  --radius: 1rem;
+  --shadow: 0 1px 2px rgb(20 23 31 / 0.04), 0 20px 40px -24px rgb(20 23 31 / 0.25);
 
   /* One fixed colour per agent, so the feed can be read at a glance. */
   --agent-supervisor: #6352c7;
   --agent-logistics: #2470bd;
-  --agent-recommendations: #bb4680;
-  --agent-budget: #a96b0c;
+  --agent-recommendations: #c2477f;
+  --agent-budget: #b06d08;
 }
 
 :root[data-theme="dark"] {
-  --background: #111210;
-  --surface: #1a1c19;
-  --surface-2: #232622;
-  --foreground: #ecebe6;
-  --muted: #a39e95;
-  --border: #30332e;
-  --primary: #62c9ad;
+  --background: #111111;
+  --surface: #1a1a1a;
+  --surface-2: #222222;
+  --foreground: #f5f5f3;
+  --muted: #a3a3a0;
+  --border: #2c2c2c;
+  --primary: #7adcc4;
   --primary-foreground: #0c1a16;
-  --accent: #ff8257;
+  --primary-soft: #16302b;
+  --accent: #ff7d5c;
+  --accent-deep: #ff6a45;
+  --accent-soft: #3a1d14;
   --danger: #ff8d7d;
   --success: #6bd6a5;
   --warning: #f0b65a;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 20px 40px -24px rgb(0 0 0 / 0.8);
 
   --agent-supervisor: #a99ef5;
   --agent-logistics: #77b6f2;
@@ -51,15 +58,18 @@
 /* Without JavaScript, follow the system setting. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --background: #111210;
-    --surface: #1a1c19;
-    --surface-2: #232622;
-    --foreground: #ecebe6;
-    --muted: #a39e95;
-    --border: #30332e;
-    --primary: #62c9ad;
+    --background: #111111;
+    --surface: #1a1a1a;
+    --surface-2: #222222;
+    --foreground: #f5f5f3;
+    --muted: #a3a3a0;
+    --border: #2c2c2c;
+    --primary: #7adcc4;
     --primary-foreground: #0c1a16;
-    --accent: #ff8257;
+    --primary-soft: #16302b;
+    --accent: #ff7d5c;
+    --accent-deep: #ff6a45;
+    --accent-soft: #3a1d14;
     --danger: #ff8d7d;
     --success: #6bd6a5;
     --warning: #f0b65a;
@@ -80,6 +90,9 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-primary-soft: var(--primary-soft);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -90,9 +103,9 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 0.375rem);
   --shadow-card: var(--shadow);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", -apple-system, ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-display: "Manrope Variable", -apple-system, ui-sans-serif, system-ui, sans-serif;
 
   --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-shimmer: shimmer 1.6s linear infinite;
@@ -193,7 +206,7 @@ html[data-theme="dark"] .leaflet-tile-pane {
   border: 2px solid var(--surface);
   background: var(--primary);
   color: var(--primary-foreground);
-  font: 600 12px/1 var(--font-geist-sans), sans-serif;
+  font: 600 12px/1 "Inter Variable", sans-serif;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
   transition: transform 0.15s ease;
 }
@@ -218,3 +231,40 @@ html[data-theme="dark"] .leaflet-tile-pane {
   stroke-linecap: round;
   fill: none;
 }
+
+/* Display headings: Manrope, heavy and tight. */
+.font-display {
+  letter-spacing: -0.02em;
+}
+
+/* Gradient "photo" panels. They stand in for destination photography and are
+   the backdrop for the illustrations. */
+.photo {
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+.photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0) 55%, rgb(0 0 0 / 0.28) 100%);
+}
+.photo > * {
+  position: relative;
+  z-index: 1;
+}
+.photo-sunset { background-image: radial-gradient(120% 140% at 20% 0%, #ff9466 0%, #ff6a45 32%, #7a3b6e 70%, #241a3d 100%); }
+.photo-gold { background-image: radial-gradient(120% 140% at 80% 0%, #fdd98b 0%, #f2a84c 30%, #6e7fa6 68%, #22283f 100%); }
+.photo-lagoon { background-image: radial-gradient(120% 140% at 30% 10%, #8fe3d6 0%, #38b7a6 34%, #1e6e7a 66%, #0f2e3b 100%); }
+.photo-forest { background-image: linear-gradient(135deg, #14453f 0%, #1e6e7a 55%, #38b7a6 100%); }
+.photo-dusk { background-image: linear-gradient(135deg, #241a3d 0%, #7a3b6e 55%, #ff6a45 100%); }
+.photo-dawn { background-image: linear-gradient(135deg, #22283f 0%, #6e7fa6 55%, #fdd98b 100%); }
+.photo-sea { background-image: linear-gradient(135deg, #0f2e3b 0%, #1e6e7a 55%, #8fe3d6 100%); }
+/* Deep, saturated cards for the signed-in home screen. */
+.photo-navy { background-image: linear-gradient(180deg, #1b3a8f 0%, #10225a 60%, #0a1433 100%); }
+.photo-ember { background-image: linear-gradient(180deg, #c8431c 0%, #8a2c14 60%, #4a180c 100%); }
+.photo-azure { background-image: linear-gradient(180deg, #1f86c7 0%, #145a8c 60%, #0b3350 100%); }
+.photo-moss { background-image: linear-gradient(180deg, #3d7a3f 0%, #275229 60%, #142c16 100%); }
