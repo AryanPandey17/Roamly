@@ -1,12 +1,13 @@
 import { signInWithGoogle } from "./actions";
 import { SubmitButton } from "@/components/form-status";
+import { GBadge } from "@/components/illustrations";
 
 export function GoogleButton({ next }: { next?: string }) {
   return (
     <form action={signInWithGoogle}>
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <SubmitButton variant="secondary" className="w-full" pendingLabel="Redirecting…">
-        Continue with Google
+        <GBadge /> Continue with Google
       </SubmitButton>
     </form>
   );

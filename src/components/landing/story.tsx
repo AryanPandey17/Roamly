@@ -83,7 +83,7 @@ export function Story() {
             </span>
             <div className="max-w-xl space-y-1.5">
               <p className="font-mono text-xs text-muted">Step {i + 1}</p>
-              <h3 className="font-display text-2xl font-semibold tracking-tight">{step.title}</h3>
+              <h3 className="font-display text-2xl font-extrabold tracking-tight">{step.title}</h3>
               <p className="text-muted">{step.text}</p>
             </div>
           </li>

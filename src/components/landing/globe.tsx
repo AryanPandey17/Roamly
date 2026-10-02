@@ -36,25 +36,29 @@ function toVector(lat: number, lng: number, radius = 1) {
   );
 }
 
-/** Resolved theme colours, re-read whenever the theme attribute changes. */
-function useThemeColours() {
-  const read = () => {
-    const style = getComputedStyle(document.documentElement);
-    const get = (name: string) => style.getPropertyValue(name).trim() || "#888";
-    return { dots: get("--muted"), route: get("--primary"), city: get("--accent") };
-  };
-  const [colours, setColours] = useState(read);
+const ON_PHOTO = { dots: "#ffffff", route: "#ffffff", city: "#ffe1d6" };
+
+function readThemeColours() {
+  const style = getComputedStyle(document.documentElement);
+  const get = (name: string) => style.getPropertyValue(name).trim() || "#888";
+  return { dots: get("--muted"), route: get("--primary"), city: get("--accent") };
+}
+
+/** Colours for the globe: white on a gradient panel, otherwise the theme's, re-read when the theme changes. */
+function useThemeColours(onPhoto: boolean) {
+  const [colours, setColours] = useState(() => (onPhoto ? ON_PHOTO : readThemeColours()));
   useEffect(() => {
-    const observer = new MutationObserver(() => setColours(read()));
+    if (onPhoto) return;
+    const observer = new MutationObserver(() => setColours(readThemeColours()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
-  }, []);
+  }, [onPhoto]);
   return colours;
 }
 
-function Scene({ still }: { still: boolean }) {
+function Scene({ still, onPhoto }: { still: boolean; onPhoto: boolean }) {
   const group = useRef<THREE.Group>(null);
-  const colours = useThemeColours();
+  const colours = useThemeColours(onPhoto);
 
   // Evenly spread dots (Fibonacci sphere).
   const dots = useMemo(() => {
@@ -111,7 +115,7 @@ function Scene({ still }: { still: boolean }) {
   );
 }
 
-export default function Globe() {
+export default function Globe({ onPhoto = false }: { onPhoto?: boolean }) {
   const [still, setStill] = useState(false);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -124,7 +128,7 @@ export default function Globe() {
   return (
     <div aria-hidden className="h-full w-full">
       <Canvas camera={{ position: [0, 0, 3.1], fov: 40 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
-        <Scene still={still} />
+        <Scene still={still} onPhoto={onPhoto} />
       </Canvas>
     </div>
   );
