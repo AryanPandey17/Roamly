@@ -73,9 +73,9 @@ Tools are bound to each model first, then the tiers are chained with LangChain's
 | Fan-in to Budget through a join edge | Two plain edges | With the Postgres checkpointer, a resumed run did not continue past the join. Plain edges resume correctly |
 | Geocoding chosen in Phase 5 | Open-Meteo geocoding is wired now | It is free, needs no key, and avoids fake coordinates |
 
-## Sample data still in use
+## Travel data
 
-Flights, stays, activities and daily cost estimates come from `src/orchestrator/providers/dev.ts`. Every option is tagged `dev-fixture`, names end in "(sample)", and the itinerary page shows a notice. Phase 5 replaces this file with real providers. Geocoding is already real.
+All travel data now comes from real providers (see `docs/api_research.md`). The sample-data file is gone. Flight and stay prices are live search results. Entry prices for attractions and daily food and transport are estimates read from web search results, labelled "est." with a source link. A place whose price cannot be found is counted as 0 and listed in the notes.
 
 ## How this was checked
 

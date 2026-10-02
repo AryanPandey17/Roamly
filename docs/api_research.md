@@ -213,3 +213,29 @@ Currency conversion and cost estimates are not model tools. They run in code ins
 - OSM tile policy: https://operations.osmfoundation.org/policies/tiles/
 - Nominatim policy: https://operations.osmfoundation.org/policies/nominatim/
 - Package versions: npm registry, 2026-10-03
+
+---
+
+## 14. As built (2026-10-03)
+
+The stack in section 1 is wired in. Differences from the plan above:
+
+| Planned | Built | Why |
+|---|---|---|
+| Travelpayouts as a second flight source | Not wired | It is optional, and could not be exercised without a token. SerpApi is the only flight source; when its quota is spent the run pauses and can be resumed |
+| Second SerpApi call for the return leg of the chosen flight | Not made | It would double the flight searches per trip. The return time is chosen on the booking page, and the itinerary says so |
+| A failed cost estimate pauses the run | The estimate is left out and the itinerary says it is not included | An optional figure should not block a trip |
+| City to airport code through Geoapify | A bundled copy of the OurAirports open dataset (3,214 airports with scheduled service) | Works offline, costs no quota, and picks up to two large airports within 100 km |
+| Place ratings | None. Places are ranked by interest match, then whether they have a Wikipedia or Wikidata entry, then distance | Geoapify has no ratings; the Google Maps option was not taken, to save SerpApi searches |
+
+What a trip costs in free quota, first run and repeat within the cache window:
+
+| Provider | First run | Repeat |
+|---|---|---|
+| SerpApi | 2 searches (flights, hotels), plus 1 per revision that finds nothing cached under the ceiling | 0 |
+| Geoapify | 2 credits (places, one route) | 0 |
+| Tavily | 2 credits (daily costs, entry prices) | 0 |
+| Open-Meteo | 3 calls (two geocodes, one forecast) | 0 to 1 |
+| Frankfurter | 1 call per currency pair | 0 |
+
+Adapters live in `src/orchestrator/providers/`. Each validates the provider's response with Zod. They were checked against responses shaped like each provider's documentation, not against the live services.

@@ -10,6 +10,7 @@ This branch is a ground-up refactor of the original prototype. Read the docs in 
 | `docs/workflow.md` | Architecture: graph, tools, LLM fallback, data, auth, API |
 | `docs/ux_flow.md` | Screens and flows |
 | `docs/implementation_plan.md` | Phases, tasks and checks |
+| `docs/api_research.md` | Which travel APIs were chosen and why |
 | `docs/database.md` | Schema, RLS policies, ER diagram |
 | `docs/orchestrator.md` | What the orchestrator does, how it was checked |
 | `docs/audit.md` | What the old code looked like and why it was replaced |
@@ -19,9 +20,9 @@ This branch is a ground-up refactor of the original prototype. Read the docs in 
 | Phase | State |
 |---|---|
 | 3. Database, RLS, auth | Done |
-| 4. LLM layer and LangGraph orchestrator | Done (on sample travel data) |
-| 5. Real travel APIs, maps | Next |
-| 6. Frontend | Pending |
+| 4. LLM layer and LangGraph orchestrator | Done |
+| 5. Real travel APIs, share and export | Done |
+| 6. Frontend polish and map | Next |
 
 ## Setup
 
